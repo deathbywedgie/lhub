@@ -70,14 +70,14 @@ class RuleSetNotFound(LhBaseException, ValueError):
 class BatchNotFound(LhBaseException, ValueError):
     """Batch ID not found"""
 
-    __default_message = 'Unable to find batch with id'
+    message = 'Unable to find batch with id'
 
     def __init__(self, input_var, message=None, *args, **kwargs):
         self.input = input_var
         if message:
             self.message = message
         elif input_var:
-            self.message = f'{self.__default_message} {self.input}'
+            self.message = f'{self.message} {self.input}'
         super().__init__(self.message, *args, **kwargs)
 
 
