@@ -423,6 +423,13 @@ class LogicHubAPI:
             else:
                 raise exceptions.Auth.APIAuthFailure(url)
 
+        # Group all tests for status code 400
+        elif response_obj.status_code == 400:
+            if re.search(r'controllers.BatchController.legacyPost.*?For input string', response_obj.text):
+                _id = re.search(r'POST /demo/batch-(\d+)', response_obj.text)
+                _id = _id.groups()[0] if _id else None
+                raise exceptions.BatchNotFound(_id)
+
         # Group all tests for status code 500
         elif response_obj.status_code == 500:
             if 'Unable to find batch with id' in response_obj.text:
