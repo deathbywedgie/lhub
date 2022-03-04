@@ -294,6 +294,7 @@ class LogicHubAPI:
     http_timeout_default = 120
     verify_ssl = True
     log: Logger = None
+    last_response_status = None
     last_response_text = None
 
     __session_cookie = None
@@ -438,7 +439,7 @@ class LogicHubAPI:
         method = method.upper() if method else "GET"
 
         # Reset last response text
-        self.last_response_text = None
+        self.last_response_text = self.last_response_status = None
         # Merge provided headers (if any) with default headers
         headers = {**self.default_http_headers, **(headers if headers else {})}
         timeout = timeout if timeout is not None else self.http_timeout_default
@@ -455,10 +456,8 @@ class LogicHubAPI:
         response = requests.request(method=method, url=url, verify=self.verify_ssl, timeout=timeout, **kwargs)
 
         # Store last response before testing whether the call was successful
-        try:
-            self.last_response_text = response.json()
-        except:
-            self.last_response_text = response.text
+        self.last_response_status = response.status_code
+        self.last_response_text = response.text
         if test_response:
             self.__standard_http_response_tests(response, url)
         return response
