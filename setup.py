@@ -8,7 +8,6 @@ setup(
     author="Chad Roberts",
     author_email="chad@logichub.com",
     description="LogicHub API Wrapper",
-    url="https://github.com/deathbywedgie/lhub",
     long_description="A Python package for interacting with LogicHub APIs",
     packages=find_packages(),
     install_requires=[
