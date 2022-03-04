@@ -201,7 +201,7 @@ class URLs:
 
     @property
     def flow_export(self):
-        return f"{self.base}/api/flow/{{}}/export"
+        return f"{self.base}/api/flow/flow-{{}}/export"
 
     @property
     def integrations(self):
@@ -821,6 +821,7 @@ class LogicHubAPI:
                 break
         return parent_folder
 
+    # ToDo This is too CLI-specific. Move out of API.
     def _save_export_to_disk(self, response, export_folder, resource_id, resource_name, file_info):
         try:
             response.raise_for_status()
@@ -860,6 +861,7 @@ class LogicHubAPI:
                 _file.write(file_data)
             self.log.info(f"{file_info} - Saved successfully")
 
+    # ToDo This is too CLI-specific. Move out of API.
     def export_flows(self, export_folder, limit=None):
         limit = int(limit if limit and int(limit) and limit >= 1 else 99999)
         export_folder = self._set_export_path(parent_folder=export_folder, export_type="flows")
