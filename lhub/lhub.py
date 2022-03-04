@@ -10,7 +10,7 @@ from collections import namedtuple
 from pathlib import Path
 
 import requests
-import lhub_exceptions
+from lhub import exceptions
 from copy import deepcopy
 
 # LOGGING START -->
@@ -375,7 +375,7 @@ class LogicHubAPI:
         for f in self.fields:
             if f.get('fieldName') == 'lh_linked_alerts':
                 return f
-        raise lhub_exceptions.Validation.VersionMinimumNotMet(min_version='m86', feature_label='linked alerts')
+        raise exceptions.Validation.VersionMinimumNotMet(min_version='m86', feature_label='linked alerts')
 
     @property
     def version(self):
@@ -418,16 +418,16 @@ class LogicHubAPI:
         # Group all tests for status code 401
         if response_obj.status_code == 401:
             if 'Unauthorized for URL' in response_obj.text or 'token is not allowed with this endpoint' in response_obj.text:
-                raise lhub_exceptions.Auth.APIAuthNotAuthorized(url)
+                raise exceptions.Auth.APIAuthNotAuthorized(url)
             else:
-                raise lhub_exceptions.Auth.APIAuthFailure(url)
+                raise exceptions.Auth.APIAuthFailure(url)
 
         # Group all tests for status code 500
         elif response_obj.status_code == 500:
             if 'Unable to find batch with id' in response_obj.text:
                 _id = re.search(r'Unable to find batch with id ([-\w]+)', response_obj.text)
                 _id = _id.groups()[0] if _id else None
-                raise lhub_exceptions.BatchNotFound(_id)
+                raise exceptions.BatchNotFound(_id)
 
         response_obj.raise_for_status()
 
@@ -503,7 +503,7 @@ class LogicHubAPI:
         try:
             results = results["result"]["data"]
         except Exception:
-            raise lhub_exceptions.UnexpectedOutput("API response does not match the expected schema for listing rule sets")
+            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing rule sets")
         return results
 
     @staticmethod
@@ -521,9 +521,9 @@ class LogicHubAPI:
             try:
                 field_mappings = json.loads(field_mappings)
             except Exception:
-                raise lhub_exceptions.Formatting.InvalidRuleFormat(field_mappings)
+                raise exceptions.Formatting.InvalidRuleFormat(field_mappings)
         if not field_mappings:
-            raise lhub_exceptions.Formatting.InvalidRuleFormat(field_mappings)
+            raise exceptions.Formatting.InvalidRuleFormat(field_mappings)
         return field_mappings
 
     @staticmethod
@@ -544,7 +544,7 @@ class LogicHubAPI:
             response.raise_for_status()
         except requests.exceptions.HTTPError:
             if response.status_code == 400 and 'Cannot find entity for id StreamId' in response.text:
-                raise lhub_exceptions.StreamNotFound(stream_id)
+                raise exceptions.StreamNotFound(stream_id)
         return response.json()
 
     def get_stream_states(self, stream_ids: list):
@@ -602,7 +602,7 @@ class LogicHubAPI:
                 timeout=self.http_timeout_default)
             response_dict = response.json()
         except (KeyError, ValueError, TypeError, IndexError):
-            raise lhub_exceptions.LhBaseException("LogicHub version could not be established")
+            raise exceptions.LhBaseException("LogicHub version could not be established")
         else:
             # Update version information any time this api call is run successfully
             self.version_info = response_dict
@@ -620,7 +620,7 @@ class LogicHubAPI:
         try:
             results = results["result"]["rules"]["data"]
         except Exception:
-            raise lhub_exceptions.UnexpectedOutput("API response does not match the expected schema for listing rules of a rule set")
+            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing rules of a rule set")
         return results
 
     # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
@@ -642,14 +642,14 @@ class LogicHubAPI:
         try:
             results = results["result"]
         except Exception:
-            raise lhub_exceptions.UnexpectedOutput("API response does not match the expected schema for adding a scoring rule")
+            raise exceptions.UnexpectedOutput("API response does not match the expected schema for adding a scoring rule")
         return results
 
     def get_rule_set_by_name(self, name):
         rule_sets = self.get_rule_sets()
         rule_set = [x for x in rule_sets if x['name'] == name]
         if not rule_set:
-            raise lhub_exceptions.RuleSetNotFound(f"No rule set found matching name: {name}")
+            raise exceptions.RuleSetNotFound(f"No rule set found matching name: {name}")
         rule_set = rule_set[0]
         rule_set['rules'] = self.get_rules_for_rule_set(rule_set['id'])
         return rule_set
@@ -692,7 +692,7 @@ class LogicHubAPI:
             try:
                 _ = results["result"]["data"]
             except Exception:
-                raise lhub_exceptions.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
+                raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
         return results
 
     # ToDo in progress
@@ -732,7 +732,7 @@ class LogicHubAPI:
         try:
             results = results["result"]
         except Exception:
-            raise lhub_exceptions.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
+            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
         return results
 
     def execute_command(self, command_payload, limit=25):
@@ -848,7 +848,7 @@ class LogicHubAPI:
                 file_data = base64.b64decode(content_b64)
             else:
                 # Should never happen, but just in case...
-                raise lhub_exceptions.LhBaseException(f"\nERROR: Unknown file type. You will need to download manually: {resource_name} ({resource_id})")
+                raise exceptions.LhBaseException(f"\nERROR: Unknown file type. You will need to download manually: {resource_name} ({resource_id})")
 
             with open(os.path.join(export_folder, file_name), write_mode) as _file:
                 _file.write(file_data)
@@ -1055,7 +1055,7 @@ class LogicHubAPI:
     def _format_alert_id(alert_id):
         if isinstance(alert_id, str):
             if not re.match(r'^(?:alert-)?\d+$', alert_id):
-                raise lhub_exceptions.Formatting.InvalidAlertIdFormat(alert_id)
+                raise exceptions.Formatting.InvalidAlertIdFormat(alert_id)
             alert_id = re.sub(r'\D+', '', alert_id)
         return int(alert_id)
 
@@ -1078,20 +1078,20 @@ class LogicHubAPI:
                 if isinstance(input_value, dict) and isinstance(input_value.get('id'), dict):
                     input_value = input_value['id']
                 if not input_value or 'id' not in input_value.keys() or not isinstance(input_value['id'], (int, str)):
-                    raise lhub_exceptions.Formatting.InvalidNotebookIdFormat(input_value)
+                    raise exceptions.Formatting.InvalidNotebookIdFormat(input_value)
                 final_notebooks.append({'key': 'notebook', 'id': int(input_value['id'])})
             else:
                 try:
                     final_notebooks.append({'key': 'notebook', 'id': int(input_value)})
                 except (ValueError, TypeError):
-                    raise lhub_exceptions.Formatting.InvalidNotebookIdFormat(input_value)
+                    raise exceptions.Formatting.InvalidNotebookIdFormat(input_value)
         return final_notebooks
 
     @staticmethod
     def _format_stream_id(alert_id):
         if isinstance(alert_id, str):
             if not re.match(r'^(?:stream-)?\d+$', alert_id):
-                raise lhub_exceptions.Formatting.InvalidStreamIdFormat(alert_id)
+                raise exceptions.Formatting.InvalidStreamIdFormat(alert_id)
             alert_id = re.sub(r'\D+', '', alert_id)
         return int(alert_id)
 
@@ -1169,9 +1169,9 @@ class LogicHubAPI:
             response = response.json()
             is_invalid = response['result'].get('error')
             if is_invalid is None:
-                raise lhub_exceptions.Validation.BaseValidationError('Unexpected response while validating query string.')
+                raise exceptions.Validation.BaseValidationError('Unexpected response while validating query string.')
             elif is_invalid:
-                raise lhub_exceptions.Validation.AlertQueryValidationError(response['result'].get('message'))
+                raise exceptions.Validation.AlertQueryValidationError(response['result'].get('message'))
 
     def alerts_search_advanced(self, query: str = None, limit: int = None):
         # Sanitize inputs
