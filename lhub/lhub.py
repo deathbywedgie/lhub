@@ -433,7 +433,7 @@ class LogicHubAPI:
         # Group all tests for status code 500
         elif response_obj.status_code == 500:
             if 'Unable to find batch with id' in response_obj.text:
-                _id = re.search(r'Unable to find batch with id ([-\w]+)', response_obj.text)
+                _id = re.search(r'Unable to find batch with id batch-(\d+)', response_obj.text)
                 _id = _id.groups()[0] if _id else None
                 raise exceptions.BatchNotFound(_id)
 
