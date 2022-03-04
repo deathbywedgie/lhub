@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
-VERSION = '0.0.1'
+VERSION = '0.0.2'
 
 setup(
-    name="lhub",
+    name="lhub_chad_test",
     version=VERSION,
     author="Chad Roberts",
     author_email="chad@logichub.com",
