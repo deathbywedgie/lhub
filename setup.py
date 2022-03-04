@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '0.0.4'
+VERSION = '0.0.5'
 
 setup(
     name="lhub",
@@ -17,7 +17,7 @@ setup(
 
     # https://pypi.org/classifiers/
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Intended Audience :: System Administrators",
         "Intended Audience :: Information Technology",
