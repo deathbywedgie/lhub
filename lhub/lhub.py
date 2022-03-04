@@ -12,6 +12,7 @@ from pathlib import Path
 import requests
 from lhub import exceptions
 from copy import deepcopy
+import atexit
 
 # LOGGING START -->
 # eventually move back out to a separate file when it's time to finish building this as a pip installable package
@@ -290,23 +291,38 @@ cached_obj = namedtuple('CachedObject', ['time', 'value'])
 class LogicHubAPI:
     DEFAULT_ALERT_RESULT_LIMIT = 100
     DEFAULT_CACHE_SECONDS = 300
-    USER_AGENT_STRING = "lhub cli"
+    USER_AGENT_STRING = "LHUB CLI"
     http_timeout_default = 120
     verify_ssl = True
     log: Logger = None
     last_response_status = None
     last_response_text = None
 
-    __session_cookie = None
     __exit_set = False
     __version = None
     __version_info = None
     __case_prefix = None
     __fields = None
     __notebooks = None
+
+    # Variables used only for API token auth
     __api_key = None
 
-    def __init__(self, hostname, api_key, verify_ssl=True, cache_seconds=None, **kwargs):
+    # Variables used only for password auth
+    __username = None
+    __password = None
+    _http_timeout_login = 20
+    __credentials = {}
+    __session_cookie = None
+
+    def __init__(self, hostname, api_key=None, username=None, password=None, verify_ssl=True, cache_seconds=None, **kwargs):
+        # First store key variables and then determine whether they are valid
+        self.__api_key = api_key.strip() if api_key else None
+        self.__username = username.strip() if username else None
+        self.__password = password.strip() if password else None
+        assert api_key or (username and password), "Must provide either an API key or a username and password"
+        assert not (api_key and password), "Using both an API token and a password is not supported"
+
         self.cache_seconds = int(cache_seconds or LogicHubAPI.DEFAULT_CACHE_SECONDS)
         if self.cache_seconds is None or self.cache_seconds < 0:
             self.cache_seconds = 0
@@ -324,9 +340,15 @@ class LogicHubAPI:
             from urllib3.exceptions import InsecureRequestWarning
             disable_warnings(InsecureRequestWarning)
 
-        self.__api_key = api_key
+        if self.__api_key:
+            self.auth_type = 'token'
+        else:
+            self.auth_type = 'password'
+            self.__credentials = {"email": self.__username, "password": self.__password}
+
         self.url = URLs(hostname)
         self.url._version = self.version
+        _ = atexit.register(self.close)
 
     def __enter__(self):
         return self
@@ -348,6 +370,8 @@ class LogicHubAPI:
         headers = {"User-Agent": self.USER_AGENT_STRING}
         if self.__api_key:
             headers["X-Auth-Token"] = self.__api_key
+        if self.__session_cookie:
+            headers['Cookie'] = f'PLAY_SESSION={self.__session_cookie}'
         return headers
 
     @property
@@ -414,18 +438,42 @@ class LogicHubAPI:
     def notebooks_name_map(self):
         return {notebook['name']: notebook['id']['id'] for notebook in self.notebooks}
 
-    @staticmethod
-    def __standard_http_response_tests(response_obj, url):
+    @property
+    def session_cookie(self):
+        # ToDo Replace this later, but for now include this until I'm sure the update is all ready
+        if self.__api_key:
+            raise Exception('Session cookie should not be invoked')
+        if not self.__session_cookie:
+            self.login()
+        return self.__session_cookie
+
+    @session_cookie.setter
+    def session_cookie(self, value):
+        self.__session_cookie = value
+
+    @property
+    def cookies(self):
+        if not self.__session_cookie:
+            return {}
+        return {'PLAY_SESSION': self.session_cookie}
+
+    def __standard_http_response_tests(self, response_obj, url):
         # Group all tests for status code 401
         if response_obj.status_code == 401:
-            if 'Unauthorized for URL' in response_obj.text or 'token is not allowed with this endpoint' in response_obj.text:
-                raise exceptions.Auth.APIAuthNotAuthorized(url)
+            if self.auth_type == 'password':
+                raise exceptions.Auth.PasswordAuthFailure
             else:
-                raise exceptions.Auth.APIAuthFailure(url)
+                if 'Unauthorized for URL' in response_obj.text or 'token is not allowed with this endpoint' in response_obj.text:
+                    raise exceptions.Auth.APIAuthNotAuthorized(url)
+                else:
+                    raise exceptions.Auth.APIAuthFailure(url)
 
         # Group all tests for status code 400
         elif response_obj.status_code == 400:
-            if re.search(r'controllers.BatchController.legacyPost.*?For input string', response_obj.text):
+            if self.auth_type == 'password':
+                if url == self.url.login and 'Username/Password not valid' in self.last_response_text:
+                    raise exceptions.Auth.PasswordAuthFailure
+            if 'batch' in url and re.search(r'controllers.BatchController.legacyPost.*?For input string', response_obj.text):
                 _id = re.search(r'POST /demo/batch-(\d+)', response_obj.text)
                 _id = _id.groups()[0] if _id else None
                 raise exceptions.BatchNotFound(_id)
@@ -442,8 +490,15 @@ class LogicHubAPI:
     def _http_request(
             self, url, method="GET", params: dict = None, body=None,
             headers: dict = None, timeout=None, test_response: bool = True,
-            **kwargs):
+            reauth=True, **kwargs):
         method = method.upper() if method else "GET"
+        # Only use reauth/automatic login if password auth is used
+        if self.auth_type == 'password':
+            # If called before successful login, run login process, but only if reauth was not disabled
+            if reauth and not self.__session_cookie:
+                self.login(force_new_session=True)
+                # Disable re-authentication going forward
+                reauth = False
 
         # Reset last response text
         self.last_response_text = self.last_response_status = None
@@ -460,7 +515,15 @@ class LogicHubAPI:
             json_body = {}
 
         kwargs = {k: v for k, v in {**{"params": params, "data": body, "json": json_body, "headers": headers}, **(kwargs or {})}.items() if v}
-        response = requests.request(method=method, url=url, verify=self.verify_ssl, timeout=timeout, **kwargs)
+        response = requests.request(method=method, url=url, verify=self.verify_ssl, timeout=timeout, cookies=self.cookies, **kwargs)
+
+        # Only use reauth/automatic login if password auth is used
+        if self.auth_type == 'password':
+            # if the response fails because the session has ended or the user has logged out, log back in and try once more
+            if response.status_code == 401 and reauth and "not logged in" in response.text:
+                self.log.debug(f"Session expired; logging in and retrying")
+                self.login(force_new_session=True)
+                response = requests.request(method=method, url=url, verify=self.verify_ssl, timeout=timeout, cookies=self.cookies, **kwargs)
 
         # Store last response before testing whether the call was successful
         self.last_response_status = response.status_code
@@ -468,6 +531,46 @@ class LogicHubAPI:
         if test_response:
             self.__standard_http_response_tests(response, url)
         return response
+
+    def login(self, force_new_session=False):
+        if self.auth_type != 'password':
+            raise exceptions.LhBaseException('Login process is only used for password auth')
+        if force_new_session:
+            self.__session_cookie = None
+
+        if self.__session_cookie:
+            self.log.debug("Already logged in; login skipped")
+            return
+
+        self.log.debug("Logging into LogicHub")
+        login_response = self._http_request(url=self.url.login, method="POST", body=self.__credentials, timeout=self._http_timeout_login, reauth=False)
+        self.session_cookie = login_response.cookies.get("PLAY_SESSION")
+        self.log.debug("Login successful")
+
+    def logout(self):
+        if self.auth_type != 'password':
+            raise exceptions.LhBaseException('Login process is only used for password auth')
+        if not self.session_cookie:
+            self.log.debug("Already logged out; logout skipped")
+            return
+
+        self.log.debug("Logout requested")
+        _response = self._http_request(url=self.url.logout, method="POST", test_response=False, reauth=False, timeout=self._http_timeout_login)
+        try:
+            _response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            self.log.warn(f"Logout failed with HTTP error: {str(err)}")
+        except Exception as err:
+            self.log.warn(f"Logout failed with UNKNOWN error: {repr(err)}")
+        else:
+            self.log.debug(f"Logout successful")
+            self.session_cookie = None
+
+    def close(self):
+        """Steps to clean up on exit"""
+        if self.auth_type == 'password':
+            self.log.debug("LogicHubAPI class exiting...")
+            self.logout()
 
     def __get_event_types_v1(self, limit):
         # Not sure when this one stopped working, but it worked somewhere in at least m66 and didn't work any more in m70
@@ -545,6 +648,13 @@ class LogicHubAPI:
 
     def get_stream_by_id(self, stream_id: int):
         headers = {"Accept": "application/json"}
+        # ToDo Revisit this. I better approach might be:
+        # try:
+        #     response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers)
+        #     return response.json()
+        # except requests.exceptions.HTTPError:
+        #     if self.last_response_status == 400 and 'Cannot find entity for id StreamId' in self.last_response_text:
+        #         raise exceptions.StreamNotFound(stream_id)
         response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers, test_response=False)
         try:
             response.raise_for_status()
@@ -605,6 +715,7 @@ class LogicHubAPI:
         try:
             response = self._http_request(
                 url=self.url.version,
+                reauth=False,
                 timeout=self.http_timeout_default)
             response_dict = response.json()
         except (KeyError, ValueError, TypeError, IndexError):
@@ -1220,7 +1331,7 @@ class LogicHub:
     log: Logger = None
     verify_ssl = True
 
-    def __init__(self, hostname, api_key, verify_ssl=True, cache_seconds=None, **kwargs):
+    def __init__(self, hostname, api_key=None, username=None, password=None, verify_ssl=True, cache_seconds=None, **kwargs):
         # If the LogicHubAPI class object has not been given a logger by the time this class is instantiated, set one for it
         LogicHubAPI.log = LogicHubAPI.log or self.log or Logger()
 
@@ -1230,9 +1341,7 @@ class LogicHub:
         LogicHubAPI.verify_ssl = self.verify_ssl
 
         self.kwargs = kwargs
-        self.api = LogicHubAPI(hostname=hostname, api_key=api_key, verify_ssl=verify_ssl, cache_seconds=cache_seconds, **kwargs)
-        # ToDo Decide if it's best to have this module verify auth automatically or leave this as an optional test
-        # _ = self.verify_api_auth()
+        self.api = LogicHubAPI(hostname=hostname, api_key=api_key, username=username, password=password, verify_ssl=verify_ssl, cache_seconds=cache_seconds, **kwargs)
 
     @property
     def case_prefix(self):
