@@ -672,6 +672,8 @@ class LogicHubAPI:
         return response.json()
 
     def get_batches_by_stream_id(self, stream_id, limit=25, offset=0, statuses=None, exclude_empty_results=False):
+        if limit == -1:
+            limit = 999999999
         params = {
             "pageSize": int(limit or 25),
             "after": int(offset or 0),
