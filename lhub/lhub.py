@@ -1425,8 +1425,17 @@ class LogicHub:
         result = self.api.get_stream_by_id(stream_id)
         return result["result"]
 
-    def action_get_batches_by_stream_id(self, stream_id: int, limit=25, statuses=None, exclude_empty_results=False):
-        result = self.api.get_batches_by_stream_id(stream_id, limit=limit, statuses=statuses, exclude_empty_results=exclude_empty_results)
+    def action_get_batches_by_stream_id(self, stream_id: int, limit=None, statuses=None, exclude_empty_results=False):
+        """
+        Get all batches for a given stream
+
+        :param stream_id: ID of the stream
+        :param limit: Optional: set a batch limit (default it unlimited, despite the fact that the API's actual default is 25)
+        :param statuses: Optional: List of statuses to include in the results
+        :param exclude_empty_results: Optional: exclude successful batches which did not output any data
+        :return: Batch results in the form of a list of dicts
+        """
+        result = self.api.get_batches_by_stream_id(stream_id, limit=limit or -1, statuses=statuses, exclude_empty_results=exclude_empty_results)
         _ = self._result_dict_has_schema(result, "result", "data", raise_errors=True, action_description="get batches by stream ID")
         return result["result"]["data"]
 
