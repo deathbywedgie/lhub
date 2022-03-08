@@ -2,31 +2,19 @@ import json
 import re
 from copy import deepcopy
 
-from lhub.api import LogicHubAPI
-from lhub.log import Logger
+from .api import LogicHubAPI
+from .log import Logger
+from .common.helpers import format_notebook_ids
 
 
-class LogicHub:
-    log: Logger = None
-    verify_ssl = True
+class Actions:
+    log = None
 
-    def __init__(self, hostname, api_key=None, username=None, password=None, verify_ssl=True, cache_seconds=None, verify_api_auth=True, **kwargs):
-        # If the LogicHubAPI class object has not been given a logger by the time this class is instantiated, set one for it
-        LogicHubAPI.log = LogicHubAPI.log or self.log or Logger()
+    def __init__(self, api: LogicHubAPI):
+        self.__api = api
 
-        # If this class has not been given a logger by the time it is instantiated, set it to match the LogicHubAPI class's logger
-        self.log = self.log or LogicHubAPI.log
-
-        LogicHubAPI.verify_ssl = self.verify_ssl
-
-        self.kwargs = kwargs
-        self.api = LogicHubAPI(hostname=hostname, api_key=api_key, username=username, password=password, verify_ssl=verify_ssl, cache_seconds=cache_seconds, **kwargs)
-        if verify_api_auth:
-            _ = self._verify_api_auth()
-
-    def _verify_api_auth(self):
-        _ = self.api.me()
-        return True
+        # If this class has not been given a logger by the time it is instantiated, inherit the same one from LogicHubAPI
+        self.log = self.log or self.__api.log
 
     @staticmethod
     def _reformat_alert_simple(alert: dict):
@@ -111,15 +99,15 @@ class LogicHub:
         return True
 
     def execute_command(self, command_name, input_dict, reformat=True, result_limit=25):
-        response = self.api.execute_command({"command": command_name, "parameterValues": input_dict, "limit": result_limit})
+        response = self.__api.execute_command({"command": command_name, "parameterValues": input_dict, "limit": result_limit})
         if not reformat:
             return response
 
         response, _ = self._reformat_cmd_results(response)
         return response
 
-    def action_get_alert_by_id(self, alert_id, simple_format=False, included_standard_fields=None, included_additional_fields=None):
-        result = self.api.alert_fetch(alert_id)
+    def get_alert_by_id(self, alert_id, simple_format=False, included_standard_fields=None, included_additional_fields=None):
+        result = self.__api.alert_fetch(alert_id)
         _ = self._result_dict_has_schema(result, "result", action_description="list users", raise_errors=True)
 
         # Reformat alert and enrich as needed
@@ -136,15 +124,15 @@ class LogicHub:
             # output['additionalFields'] = {}
         return output
 
-    def action_get_batch_results_by_id(self, batch_id: int, limit=1000, keep_additional_info=False):
-        result = self.api.get_batch_results_by_id(batch_id=batch_id, limit=limit)
+    def get_batch_results_by_id(self, batch_id: int, limit=1000, keep_additional_info=False):
+        result = self.__api.get_batch_results_by_id(batch_id=batch_id, limit=limit)
         _ = self._result_dict_has_schema(result, "result", "data", raise_errors=True, action_description="fetch batch results")
         result = result["result"]["data"]
         if not keep_additional_info:
             result = [r["columns"] for r in result]
         return result
 
-    def action_get_batches_by_stream_id(self, stream_id: int, limit=None, statuses=None, exclude_empty_results=False):
+    def get_batches_by_stream_id(self, stream_id: int, limit=None, statuses=None, exclude_empty_results=False):
         """
         Get all batches for a given stream
 
@@ -154,44 +142,44 @@ class LogicHub:
         :param exclude_empty_results: Optional: exclude successful batches which did not output any data
         :return: Batch results in the form of a list of dicts
         """
-        result = self.api.get_batches_by_stream_id(stream_id, limit=limit or -1, statuses=statuses, exclude_empty_results=exclude_empty_results)
+        result = self.__api.get_batches_by_stream_id(stream_id, limit=limit or -1, statuses=statuses, exclude_empty_results=exclude_empty_results)
         _ = self._result_dict_has_schema(result, "result", "data", raise_errors=True, action_description="get batches by stream ID")
         return result["result"]["data"]
 
-    def action_get_case_prefix(self):
-        return self.api.case_prefix
+    def get_case_prefix(self):
+        return self.__api.case_prefix
 
-    def action_get_notebooks_attached_to_case(self, case_id):
-        response = self.api.case_list_attached_notebooks(case_id)
+    def get_notebooks_attached_to_case(self, case_id):
+        response = self.__api.case_list_attached_notebooks(case_id)
         _ = self._result_dict_has_schema(response, "result", action_description="get notebooks from case", raise_errors=True)
         return response.get('result', [])
 
     # ToDo This finally works as of m91. Add an action for it.
-    def action_get_stream_by_id(self, stream_id: int):
-        result = self.api.get_stream_by_id(stream_id)
+    def get_stream_by_id(self, stream_id: int):
+        result = self.__api.get_stream_by_id(stream_id)
         return result["result"]
 
-    def action_get_version(self):
-        return self.api.version_info
+    def get_version(self):
+        return self.__api.version_info
 
-    def action_get_workflow_by_id(self, workflow_id):
+    def get_workflow_by_id(self, workflow_id):
         if isinstance(workflow_id, str):
             workflow_id = re.findall(r"(\d+)", workflow_id)
             if not workflow_id:
                 raise ValueError("Invalid Workflow ID: no numeric value found")
             workflow_id = workflow_id[0]
         workflow_id = int(workflow_id)
-        result = self.api.get_workflow_by_id(workflow_id=workflow_id)
+        result = self.__api.get_workflow_by_id(workflow_id=workflow_id)
         _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="fetch workflow by ID")
         return result["result"]
 
-    def action_list_baselines(self):
-        result = self.api.list_baselines()
+    def list_baselines(self):
+        result = self.__api.list_baselines()
         _ = self._result_dict_has_schema(result, "result", "data", "data", raise_errors=True, action_description="list baselines")
         result = result["result"]["data"]
         baselines = result['data']
         stream_ids = [int(b['id']['id']) for b in baselines]
-        stream_state_response = self.api.get_stream_states(stream_ids=stream_ids)
+        stream_state_response = self.__api.get_stream_states(stream_ids=stream_ids)
         _ = self._result_dict_has_schema(stream_state_response, "result", "streams", raise_errors=True, action_description="fetch stream states")
         state_map = {_stream['streamId']: _stream['status'] for _stream in stream_state_response['result']['streams']}
         for n in range(len(baselines)):
@@ -200,8 +188,8 @@ class LogicHub:
             baselines[n]['baseline_config_status'] = state_map.get(f"stream-{b['id']['id']}")
         return result
 
-    def action_list_connections(self, add_status=False):
-        result = self.api.list_connections()
+    def list_connections(self, add_status=False):
+        result = self.__api.list_connections()
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list connections", raise_errors=True)
         result = result["result"]["data"]
         if not add_status:
@@ -209,7 +197,7 @@ class LogicHub:
 
         connections = result["data"]
         connection_ids = [connection["id"]["id"] for connection in connections]
-        status_results = self.api.get_connection_status(connection_ids)
+        status_results = self.__api.get_connection_status(connection_ids)
         statuses = {status["connectionEntityId"].replace("connection-", ''): status["status"] for status in status_results['result']}
         for n in range(len(connections)):
             connection = connections[n]
@@ -219,8 +207,8 @@ class LogicHub:
                 raise ValueError(f"Connection ID {connection_id} missing from status list")
         return result
 
-    def action_list_custom_lists(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = None):
-        results = self.api.get_custom_lists(search_text=search_text, filters=filters, limit=limit, offset=offset, verify_results=False)
+    def list_custom_lists(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = None):
+        results = self.__api.get_custom_lists(search_text=search_text, filters=filters, limit=limit, offset=offset, verify_results=False)
         warnings = []
         try:
             results = results["result"]["data"]
@@ -228,9 +216,9 @@ class LogicHub:
             warnings.append("API response does not match the expected schema for listing custom lists")
         return results, warnings
 
-    def action_list_fields(self, map_mode=None):
+    def list_fields(self, map_mode=None):
         assert not map_mode or map_mode in ['id', 'name'], f'Invalid output format: {map_mode}'
-        result = self.api.fields
+        result = self.__api.fields
         _ = self._result_dict_has_schema(result, "result", "data", raise_errors=True, action_description="list fields")
         output = result["result"]["data"]
         if map_mode == "id":
@@ -239,12 +227,12 @@ class LogicHub:
             output = {f['fieldName']: {k: v for k, v in f.items() if k != 'fieldName'} for f in output}
         return output
 
-    def action_list_integrations(self, name_filter: str = None, filter_type="contains"):
+    def list_integrations(self, name_filter: str = None, filter_type="contains"):
         filter_type = filter_type.lower()
         assert filter_type in ["equals", "contains"], f"Invalid filter type \"{filter_type}\""
         assert isinstance(name_filter, str), "name_filter must be a string and cannot be None"
 
-        _response = self.api.get_integrations()
+        _response = self.__api.get_integrations()
 
         # _query = _response.pop("query")
         _result = _response.pop("result")
@@ -263,8 +251,8 @@ class LogicHub:
                 results = new_result
         return results, categories
 
-    def action_list_modules(self, local_only=False):
-        result = self.api.list_modules()
+    def list_modules(self, local_only=False):
+        result = self.__api.list_modules()
         _ = self._result_dict_has_schema(result, "result", "objects", action_description="list modules", raise_errors=True)
         other_details = result["result"]
         modules = other_details.pop('objects')
@@ -275,62 +263,62 @@ class LogicHub:
 
         return modules, other_details
 
-    def action_list_notebooks(self):
-        result = self.api.list_notebooks()
+    def list_notebooks(self):
+        result = self.__api.list_notebooks()
         _ = self._result_dict_has_schema(result, "result", "data", "data", action_description="list notebooks", raise_errors=True)
         return result["result"]["data"]
 
-    def action_list_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
-        result = self.api.list_streams(search_text=search_text, filters=filters, limit=limit, offset=offset)
+    def list_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
+        result = self.__api.list_streams(search_text=search_text, filters=filters, limit=limit, offset=offset)
         _ = self._result_dict_has_schema(result, "result", "data", "data", raise_errors=True, action_description="list streams")
         return result["result"]["data"]["data"]
 
-    def action_list_user_groups(self, hide_inactive=False):
-        result = self.api.user_groups(hide_inactive=hide_inactive)
+    def list_user_groups(self, hide_inactive=False):
+        result = self.__api.user_groups(hide_inactive=hide_inactive)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list user groups", raise_errors=True)
         return result["result"]
 
-    def action_list_users(self, hide_inactive=False):
-        result = self.api.users(hide_inactive=hide_inactive)
+    def list_users(self, hide_inactive=False):
+        result = self.__api.users(hide_inactive=hide_inactive)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list users", raise_errors=True)
         return result["result"]
 
-    def action_list_workflows(self):
-        result = self.api.get_workflows()
+    def list_workflows(self):
+        result = self.__api.get_workflows()
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list workflows", raise_errors=True)
         return result["result"]["data"]
 
-    def action_reprocess_batch(self, batch_id):
-        return self.api.reprocess_batch(batch_id)
+    def reprocess_batch(self, batch_id):
+        return self.__api.reprocess_batch(batch_id)
 
-    def action_attach_notebooks_from_case(self, case_id, notebook_ids):
-        current_notebooks = self.api.case_list_attached_notebooks(case_id, results_only=True)
+    def attach_notebooks_from_case(self, case_id, notebook_ids):
+        current_notebooks = self.__api.case_list_attached_notebooks(case_id, results_only=True)
         current_notebooks = [notebook['id'] for notebook in current_notebooks]
-        new_notebooks = self.api._format_notebook_ids(notebook_ids)
+        new_notebooks = format_notebook_ids(notebook_ids)
         updated_notebooks = current_notebooks + [x for x in new_notebooks if x not in current_notebooks]
         if current_notebooks == updated_notebooks:
             return {"result": "no changes made"}
-        return self.api.case_overwrite_attached_notebooks(case_id, updated_notebooks)
+        return self.__api.case_overwrite_attached_notebooks(case_id, updated_notebooks)
 
-    def action_detach_notebooks_from_case(self, case_id, notebook_ids):
-        current_notebooks = self.api.case_list_attached_notebooks(case_id, results_only=True)
+    def detach_notebooks_from_case(self, case_id, notebook_ids):
+        current_notebooks = self.__api.case_list_attached_notebooks(case_id, results_only=True)
         if not current_notebooks:
             return {"result": "no changes made"}
         # Reformat to match
-        current_notebooks = self.api._format_notebook_ids(current_notebooks)
-        new_notebooks = self.api._format_notebook_ids(notebook_ids)
+        current_notebooks = format_notebook_ids(current_notebooks)
+        new_notebooks = format_notebook_ids(notebook_ids)
         updated_notebooks = [notebook for notebook in current_notebooks if notebook['id'] not in [x['id'] for x in new_notebooks]]
         if current_notebooks == updated_notebooks:
             return {"result": "no changes made"}
-        return self.api.case_overwrite_attached_notebooks(case_id, updated_notebooks)
+        return self.__api.case_overwrite_attached_notebooks(case_id, updated_notebooks)
 
-    def action_remove_all_notebooks_from_case(self, case_id):
-        current_notebooks = self.api.case_list_attached_notebooks(case_id, results_only=True)
+    def remove_all_notebooks_from_case(self, case_id):
+        current_notebooks = self.__api.case_list_attached_notebooks(case_id, results_only=True)
         if not current_notebooks:
             return {"result": "no changes made"}
-        return self.api.case_overwrite_attached_notebooks(case_id, [])
+        return self.__api.case_overwrite_attached_notebooks(case_id, [])
 
-    def action_alerts_search_advanced(self, query: str = None, limit: int = None, fetch_details=None, included_standard_fields=None, included_additional_fields=None):
+    def alerts_search_advanced(self, query: str = None, limit: int = None, fetch_details=None, included_standard_fields=None, included_additional_fields=None):
         simple_format = False
         if fetch_details:
             if fetch_details not in ['standard', 'simple']:
@@ -338,23 +326,43 @@ class LogicHub:
             elif fetch_details == 'simple':
                 simple_format = True
         query = query.strip() if query and query.strip() else ""
-        result = self.api.alerts_search_advanced(query=query, limit=limit)
+        result = self.__api.alerts_search_advanced(query=query, limit=limit)
         _ = self._result_dict_has_schema(result, "result", action_description="search alerts", raise_errors=True)
         output = result['result']
         if fetch_details:
             alerts = [x['id'] for x in output['data']]
             return [
-                self.action_get_alert_by_id(alert, simple_format=simple_format, included_standard_fields=included_standard_fields, included_additional_fields=included_additional_fields)
+                self.get_alert_by_id(alert, simple_format=simple_format, included_standard_fields=included_standard_fields, included_additional_fields=included_additional_fields)
                 for alert in alerts
             ]
         return output
 
-    def action_pause_stream(self, stream_id):
-        result = self.api.stream_pause(stream_id=stream_id)
+    def pause_stream(self, stream_id):
+        result = self.__api.stream_pause(stream_id=stream_id)
         _ = self._result_dict_has_schema(result, "result", action_description="pause stream", raise_errors=True, accept_null=True)
         return result
 
-    def action_resume_stream(self, stream_id):
-        result = self.api.stream_resume(stream_id=stream_id)
+    def resume_stream(self, stream_id):
+        result = self.__api.stream_resume(stream_id=stream_id)
         _ = self._result_dict_has_schema(result, "result", action_description="resume stream", raise_errors=True, accept_null=True)
         return result
+
+
+class LogicHub:
+    verify_ssl = True
+
+    def __init__(self, hostname, api_key=None, username=None, password=None, verify_ssl=True, cache_seconds=None, verify_api_auth=True, logger: Logger=None, **kwargs):
+        # If the LogicHubAPI class object has not been given a logger by the time this class is instantiated, set one for it
+        LogicHubAPI.log = LogicHubAPI.log or logger or Logger()
+
+        LogicHubAPI.verify_ssl = self.verify_ssl
+
+        self.kwargs = kwargs
+        self.api = LogicHubAPI(hostname=hostname, api_key=api_key, username=username, password=password, verify_ssl=verify_ssl, cache_seconds=cache_seconds, **kwargs)
+        self.actions = Actions(self.api)
+        if verify_api_auth:
+            _ = self._verify_api_auth()
+
+    def _verify_api_auth(self):
+        _ = self.api.me()
+        return True
