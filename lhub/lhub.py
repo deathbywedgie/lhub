@@ -75,6 +75,24 @@ class LogicHub:
         response, _ = self._reformat_cmd_results(response)
         return response
 
+    def action_get_alert_by_id(self, alert_id, simple_format=False, included_standard_fields=None, included_additional_fields=None):
+        result = self.api.alert_fetch(alert_id)
+        _ = self._result_dict_has_schema(result, "result", action_description="list users", raise_errors=True)
+
+        # Reformat alert and enrich as needed
+        output = self.__enrich_alert_data(
+            result['result'],
+            included_standard_fields=included_standard_fields,
+            included_additional_fields=included_additional_fields
+        )
+
+        # Simplify mapped and additional field output
+        if simple_format:
+            output = self._reformat_alert_simple(output)
+            # field_map = self.action_list_fields(map_mode="name")
+            # output['additionalFields'] = {}
+        return output
+
     def action_get_batch_results_by_id(self, batch_id: int, limit=1000, keep_additional_info=False):
         result = self.api.get_batch_results_by_id(batch_id=batch_id, limit=limit)
         _ = self._result_dict_has_schema(result, "result", "data", raise_errors=True, action_description="fetch batch results")
@@ -99,30 +117,6 @@ class LogicHub:
 
     def action_get_case_prefix(self):
         return self.case_prefix
-
-    def action_get_integrations(self, name_filter: str = None, filter_type="contains"):
-        filter_type = filter_type.lower()
-        assert filter_type in ["equals", "contains"], f"Invalid filter type \"{filter_type}\""
-        assert isinstance(name_filter, str), "name_filter must be a string and cannot be None"
-
-        _response = self.api.get_integrations()
-
-        # _query = _response.pop("query")
-        _result = _response.pop("result")
-        categories = _result["categories"]
-        results = _result["objects"]
-
-        if name_filter:
-            if filter_type == "contains":
-                results = [result for result in results if name_filter.lower() in result["resource"]["name"].lower()]
-            else:
-                new_result = {}
-                for result in results:
-                    if result["resource"]["name"].lower() == name_filter.lower():
-                        new_result = result
-                        break
-                results = new_result
-        return results, categories
 
     def action_get_notebooks_attached_to_case(self, case_id):
         response = self.api.case_list_attached_notebooks(case_id)
@@ -201,6 +195,30 @@ class LogicHub:
         elif map_mode == "name":
             output = {f['fieldName']: {k: v for k, v in f.items() if k != 'fieldName'} for f in output}
         return output
+
+    def action_list_integrations(self, name_filter: str = None, filter_type="contains"):
+        filter_type = filter_type.lower()
+        assert filter_type in ["equals", "contains"], f"Invalid filter type \"{filter_type}\""
+        assert isinstance(name_filter, str), "name_filter must be a string and cannot be None"
+
+        _response = self.api.get_integrations()
+
+        # _query = _response.pop("query")
+        _result = _response.pop("result")
+        categories = _result["categories"]
+        results = _result["objects"]
+
+        if name_filter:
+            if filter_type == "contains":
+                results = [result for result in results if name_filter.lower() in result["resource"]["name"].lower()]
+            else:
+                new_result = {}
+                for result in results:
+                    if result["resource"]["name"].lower() == name_filter.lower():
+                        new_result = result
+                        break
+                results = new_result
+        return results, categories
 
     def action_list_modules(self, local_only=False):
         result = self.api.list_modules()
@@ -319,24 +337,6 @@ class LogicHub:
         alert['mappedAlertFieldValues'] = {x['displayName']: x['value'] for x in alert.get('mappedAlertFieldValues', {}) if x.get('displayName')}
         return alert
 
-    def action_fetch_alert(self, alert_id, simple_format=False, included_standard_fields=None, included_additional_fields=None):
-        result = self.api.alert_fetch(alert_id)
-        _ = self._result_dict_has_schema(result, "result", action_description="list users", raise_errors=True)
-
-        # Reformat alert and enrich as needed
-        output = self.__enrich_alert_data(
-            result['result'],
-            included_standard_fields=included_standard_fields,
-            included_additional_fields=included_additional_fields
-        )
-
-        # Simplify mapped and additional field output
-        if simple_format:
-            output = self._reformat_alert_simple(output)
-            # field_map = self.action_list_fields(map_mode="name")
-            # output['additionalFields'] = {}
-        return output
-
     def action_alerts_search_advanced(self, query: str = None, limit: int = None, fetch_details=None, included_standard_fields=None, included_additional_fields=None):
         simple_format = False
         if fetch_details:
@@ -351,7 +351,7 @@ class LogicHub:
         if fetch_details:
             alerts = [x['id'] for x in output['data']]
             return [
-                self.action_fetch_alert(alert, simple_format=simple_format, included_standard_fields=included_standard_fields, included_additional_fields=included_additional_fields)
+                self.action_get_alert_by_id(alert, simple_format=simple_format, included_standard_fields=included_standard_fields, included_additional_fields=included_additional_fields)
                 for alert in alerts
             ]
         return output
