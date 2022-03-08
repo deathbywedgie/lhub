@@ -6,45 +6,45 @@ def to_dict_recursive(obj, track_changes=False):
     to_dict_recursive.step_count = 0
     to_dict_recursive.changes = []
 
-    def _crawl_nested_objects(obj, track_changes=False):
+    def _crawl_nested_objects(_obj, _track_changes=False):
         to_dict_recursive.step_count += 1
 
-        if type(obj) is bytes:
-            obj = obj.decode('utf-8')
+        if type(_obj) is bytes:
+            _obj = _obj.decode('utf-8')
 
         # First try strings as json
-        if type(obj) is str:
+        if type(_obj) is str:
             try:
-                new = json.loads(obj)
+                _new = json.loads(_obj)
             except:
                 pass
             else:
-                if new != obj:
-                    if track_changes:
-                        to_dict_recursive.changes.append({"change": "string changed by json.loads", "original": obj})
-                    obj = new
+                if _new != _obj:
+                    if _track_changes:
+                        to_dict_recursive.changes.append({"change": "string changed by json.loads", "original": _obj})
+                    _obj = _new
 
         # if still a string, try it with ast
-        if type(obj) is str:
+        if type(_obj) is str:
             try:
-                new = ast.literal_eval(obj)
+                _new = ast.literal_eval(_obj)
             except (ValueError, TypeError, SyntaxError):
-                return obj
+                return _obj
             else:
-                if track_changes:
-                    to_dict_recursive.changes.append({"change": "string changed by ast", "original": obj})
-                obj = new
+                if _track_changes:
+                    to_dict_recursive.changes.append({"change": "string changed by ast", "original": _obj})
+                _obj = _new
 
         # Tried only crawling if entries are strings, but if an entry is a dict or a list
         # and *its* entries need fixing then it doesn't work, so reanalyze all entries.
-        if isinstance(obj, list) or isinstance(obj, tuple):
-            obj = [_crawl_nested_objects(entry, track_changes) for entry in obj]
-        elif isinstance(obj, dict):
-            obj = {k: _crawl_nested_objects(obj[k], track_changes) for k in obj.keys()}
+        if isinstance(_obj, list) or isinstance(_obj, tuple):
+            _obj = [_crawl_nested_objects(entry, _track_changes) for entry in _obj]
+        elif isinstance(_obj, dict):
+            _obj = {k: _crawl_nested_objects(_obj[k], _track_changes) for k in _obj.keys()}
 
-        return obj
+        return _obj
 
-    return _crawl_nested_objects(obj, track_changes)
+    return _crawl_nested_objects(_obj=obj, _track_changes=track_changes)
 
 
 # Sort dicts and lists recursively with a self-calling function
