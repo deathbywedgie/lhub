@@ -24,10 +24,6 @@ class LogicHub:
         if verify_api_auth:
             _ = self._verify_api_auth()
 
-    @property
-    def case_prefix(self):
-        return self.api.case_prefix
-
     def _verify_api_auth(self):
         _ = self.api.me()
         return True
@@ -163,7 +159,7 @@ class LogicHub:
         return result["result"]["data"]
 
     def action_get_case_prefix(self):
-        return self.case_prefix
+        return self.api.case_prefix
 
     def action_get_notebooks_attached_to_case(self, case_id):
         response = self.api.case_list_attached_notebooks(case_id)
