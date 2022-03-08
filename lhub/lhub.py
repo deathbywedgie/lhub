@@ -10,7 +10,7 @@ class LogicHub:
     log: Logger = None
     verify_ssl = True
 
-    def __init__(self, hostname, api_key=None, username=None, password=None, verify_ssl=True, cache_seconds=None, **kwargs):
+    def __init__(self, hostname, api_key=None, username=None, password=None, verify_ssl=True, cache_seconds=None, verify_api_auth=True, **kwargs):
         # If the LogicHubAPI class object has not been given a logger by the time this class is instantiated, set one for it
         LogicHubAPI.log = LogicHubAPI.log or self.log or Logger()
 
@@ -21,6 +21,8 @@ class LogicHub:
 
         self.kwargs = kwargs
         self.api = LogicHubAPI(hostname=hostname, api_key=api_key, username=username, password=password, verify_ssl=verify_ssl, cache_seconds=cache_seconds, **kwargs)
+        if verify_api_auth:
+            _ = self._verify_api_auth()
 
     @property
     def case_prefix(self):
@@ -29,7 +31,7 @@ class LogicHub:
     def __me(self):
         return self.api.me()
 
-    def verify_api_auth(self):
+    def _verify_api_auth(self):
         response = self.__me()
         return response
 
