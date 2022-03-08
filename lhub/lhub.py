@@ -35,6 +35,26 @@ class LogicHub:
         response = self.__me()
         return response
 
+    @staticmethod
+    def _reformat_alert_simple(alert: dict):
+        if not alert:
+            return {}
+        alert = deepcopy(alert)
+        # From this: {"displayName": "batch_start_millis", "value": "1632146400000"}
+        # To this: {"batch_start_millis": "1632146400000"}
+        alert['additionalFields'] = {x['displayName']: x['value'] for x in alert.get('additionalFields', {}) if x.get('displayName')}
+
+        # From this: {"caseFieldId": "field-17", "displayName": "Alert Context", "fieldType": "Text", "value": "mdr_test"}
+        # To this: {"Alert Context": "mdr_test"}
+        for k in alert.get('mappedAlertFieldValues', {}):
+            if k.get('fieldType') == 'JSON':
+                try:
+                    k['value'] = json.loads(k['value'])
+                except (ValueError, TypeError, json.decoder.JSONDecodeError):
+                    pass
+        alert['mappedAlertFieldValues'] = {x['displayName']: x['value'] for x in alert.get('mappedAlertFieldValues', {}) if x.get('displayName')}
+        return alert
+
     def _reformat_cmd_results(self, response_dict, drop_hidden_columns=True):
         full_result = response_dict.copy()
 
@@ -53,6 +73,36 @@ class LogicHub:
             self.log.debug(f"WARNING RETURNED: {_warning}")
 
         return result_output, warnings
+
+    @staticmethod
+    def __enrich_alert_data(alert: dict, included_standard_fields=None, included_additional_fields=None):
+        # Verify and sanitize inputs
+        if not alert:
+            return {}
+        alert = deepcopy(alert)
+        if not isinstance(included_standard_fields, list):
+            included_standard_fields = [included_standard_fields] if included_standard_fields else []
+        included_standard_fields = [f.strip() for f in included_standard_fields if f and f.strip()]
+        if not isinstance(included_additional_fields, list):
+            included_additional_fields = [included_additional_fields] if included_additional_fields else []
+        included_additional_fields = [f.strip() for f in included_additional_fields if f and f.strip()]
+
+        if not included_standard_fields and not included_additional_fields:
+            return alert
+
+        additional_fields = alert.pop('additionalFields', [])
+        additional_fields = [f for f in additional_fields if not included_additional_fields or f.get('displayName') in included_additional_fields]
+
+        mapped_fields = alert.pop('mappedAlertFieldValues', [])
+        mapped_fields = [f for f in mapped_fields if not included_standard_fields or f.get('displayName') in included_standard_fields]
+
+        new_alert = {'id': alert.pop('id')}
+        new_alert.update({k: v for k, v in alert.items() if not included_standard_fields or k in included_standard_fields})
+        new_alert.update({
+            'additionalFields': additional_fields,
+            'mappedAlertFieldValues': mapped_fields,
+        })
+        return new_alert
 
     @staticmethod
     def _result_dict_has_schema(result_dict, *fields, raise_errors=False, action_description=None, accept_null=False):
@@ -286,56 +336,6 @@ class LogicHub:
         if not current_notebooks:
             return {"result": "no changes made"}
         return self.api.case_overwrite_attached_notebooks(case_id, [])
-
-    @staticmethod
-    def __enrich_alert_data(alert: dict, included_standard_fields=None, included_additional_fields=None):
-        # Verify and sanitize inputs
-        if not alert:
-            return {}
-        alert = deepcopy(alert)
-        if not isinstance(included_standard_fields, list):
-            included_standard_fields = [included_standard_fields] if included_standard_fields else []
-        included_standard_fields = [f.strip() for f in included_standard_fields if f and f.strip()]
-        if not isinstance(included_additional_fields, list):
-            included_additional_fields = [included_additional_fields] if included_additional_fields else []
-        included_additional_fields = [f.strip() for f in included_additional_fields if f and f.strip()]
-
-        if not included_standard_fields and not included_additional_fields:
-            return alert
-
-        additional_fields = alert.pop('additionalFields', [])
-        additional_fields = [f for f in additional_fields if not included_additional_fields or f.get('displayName') in included_additional_fields]
-
-        mapped_fields = alert.pop('mappedAlertFieldValues', [])
-        mapped_fields = [f for f in mapped_fields if not included_standard_fields or f.get('displayName') in included_standard_fields]
-
-        new_alert = {'id': alert.pop('id')}
-        new_alert.update({k: v for k, v in alert.items() if not included_standard_fields or k in included_standard_fields})
-        new_alert.update({
-            'additionalFields': additional_fields,
-            'mappedAlertFieldValues': mapped_fields,
-        })
-        return new_alert
-
-    @staticmethod
-    def _reformat_alert_simple(alert: dict):
-        if not alert:
-            return {}
-        alert = deepcopy(alert)
-        # From this: {"displayName": "batch_start_millis", "value": "1632146400000"}
-        # To this: {"batch_start_millis": "1632146400000"}
-        alert['additionalFields'] = {x['displayName']: x['value'] for x in alert.get('additionalFields', {}) if x.get('displayName')}
-
-        # From this: {"caseFieldId": "field-17", "displayName": "Alert Context", "fieldType": "Text", "value": "mdr_test"}
-        # To this: {"Alert Context": "mdr_test"}
-        for k in alert.get('mappedAlertFieldValues', {}):
-            if k.get('fieldType') == 'JSON':
-                try:
-                    k['value'] = json.loads(k['value'])
-                except (ValueError, TypeError, json.decoder.JSONDecodeError):
-                    pass
-        alert['mappedAlertFieldValues'] = {x['displayName']: x['value'] for x in alert.get('mappedAlertFieldValues', {}) if x.get('displayName')}
-        return alert
 
     def action_alerts_search_advanced(self, query: str = None, limit: int = None, fetch_details=None, included_standard_fields=None, included_additional_fields=None):
         simple_format = False
