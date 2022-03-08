@@ -6,8 +6,8 @@ from pathlib import Path
 
 import time
 
-from lhub.common.dicts_and_lists import sort_dicts_and_lists
-from lhub.common.shell import query_yes_no
+from ..common.dicts_and_lists import sort_dicts_and_lists
+from ..common.shell import query_yes_no
 
 # Static/configurable vars
 DEFAULT_CONFIG_DIR = "~/.logichub"
