@@ -69,10 +69,6 @@ class LogicHub:
             warnings.append("API response does not match the expected schema for listing custom lists")
         return results, warnings
 
-    def action_get_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
-        response = self.api.get_streams(search_text=search_text, filters=filters, limit=limit, offset=offset)
-        return response["result"]["data"]["data"]
-
     def action_get_integrations(self, name_filter: str = None, filter_type="contains"):
         filter_type = filter_type.lower()
         assert filter_type in ["equals", "contains"], f"Invalid filter type \"{filter_type}\""
@@ -207,6 +203,11 @@ class LogicHub:
             if not connection["status"]:
                 raise ValueError(f"Connection ID {connection_id} missing from status list")
         return result
+
+    def action_list_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
+        result = self.api.list_streams(search_text=search_text, filters=filters, limit=limit, offset=offset)
+        _ = self._result_dict_has_schema(result, "result", "data", "data", raise_errors=True, action_description="list streams")
+        return result["result"]["data"]["data"]
 
     def action_list_workflows(self):
         result = self.api.get_workflows()

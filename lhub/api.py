@@ -617,25 +617,6 @@ class LogicHubAPI:
         response = self._http_request(method="GET", url=self.url.integrations)
         return response.json()
 
-    def get_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
-        params = {"libraryView": "all"}
-        headers = {"Content-Type": "application/json"}
-
-        filters = filters or []
-        if search_text:
-            filters.append({"searchText": search_text})
-
-        body_dict = {
-            "filters": filters,
-            "offset": offset,
-            "pageSize": limit,
-            "sortColumn": "name",
-            "sortOrder": "ASC"
-        }
-
-        response = self._http_request(method="POST", url=self.url.streams, body=body_dict, headers=headers, params=params)
-        return response.json()
-
     def get_version_info(self):
         self.log.debug("Fetching LogicHub version")
         try:
@@ -949,6 +930,25 @@ class LogicHubAPI:
             url=self.url.modules,
             headers={"Content-Type": "application/json"}
         )
+        return response.json()
+
+    def list_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
+        params = {"libraryView": "all"}
+        headers = {"Content-Type": "application/json"}
+
+        filters = filters or []
+        if search_text:
+            filters.append({"searchText": search_text})
+
+        body_dict = {
+            "filters": filters,
+            "offset": offset,
+            "pageSize": limit,
+            "sortColumn": "name",
+            "sortOrder": "ASC"
+        }
+
+        response = self._http_request(method="POST", url=self.url.streams, body=body_dict, headers=headers, params=params)
         return response.json()
 
     def get_connection_status(self, connections: list):
