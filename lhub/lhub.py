@@ -28,12 +28,9 @@ class LogicHub:
     def case_prefix(self):
         return self.api.case_prefix
 
-    def __me(self):
-        return self.api.me()
-
     def _verify_api_auth(self):
-        response = self.__me()
-        return response
+        _ = self.api.me()
+        return True
 
     @staticmethod
     def _reformat_alert_simple(alert: dict):
