@@ -291,7 +291,7 @@ class Actions:
     def reprocess_batch(self, batch_id):
         return self.__api.reprocess_batch(batch_id)
 
-    def attach_notebooks_from_case(self, case_id, notebook_ids):
+    def attach_notebooks_to_case(self, case_id, notebook_ids):
         current_notebooks = self.__api.case_list_attached_notebooks(case_id, results_only=True)
         current_notebooks = [notebook['id'] for notebook in current_notebooks]
         new_notebooks = format_notebook_ids(notebook_ids)
@@ -318,7 +318,8 @@ class Actions:
             return {"result": "no changes made"}
         return self.__api.case_overwrite_attached_notebooks(case_id, [])
 
-    def alerts_search_advanced(self, query: str = None, limit: int = None, fetch_details=None, included_standard_fields=None, included_additional_fields=None):
+    # ToDo Add an action for basic search as well
+    def search_alerts_advanced(self, query: str = None, limit: int = None, fetch_details=None, included_standard_fields=None, included_additional_fields=None):
         simple_format = False
         if fetch_details:
             if fetch_details not in ['standard', 'simple']:
