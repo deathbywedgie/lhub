@@ -350,7 +350,7 @@ class LogicHubAPI:
     @property
     def notebooks(self):
         if not self.__get_cached_object(self.__notebooks):
-            result = self.notebooks_list()
+            result = self.list_notebooks()
             self.notebooks = result["result"]["data"]["data"]
         return self.__notebooks.value
 
@@ -976,6 +976,29 @@ class LogicHubAPI:
         )
         return response.json()
 
+    def list_notebooks(self, limit=None, search_string=None):
+        limit = limit if limit and isinstance(limit, int) else 99999
+        body = {
+            "filters": [],
+            "offset": 0,
+            "pageSize": limit,
+            "sortColumn": "name",
+            "sortOrder": "ASC",
+        }
+        if search_string:
+            body['filters'] = [{"searchText": search_string}]
+        response = self._http_request(
+            url=self.url.notebooks_list,
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            params={"libraryView": "all"},
+            body=body
+        )
+        response = response.json()
+        # Sort the results by notebook ID
+        self.notebooks = response["result"]["data"]["data"] = self.__sort_notebook_objects_by_id(response["result"]["data"]["data"])
+        return response
+
     def list_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
         params = {"libraryView": "all"}
         headers = {"Content-Type": "application/json"}
@@ -1071,29 +1094,6 @@ class LogicHubAPI:
             for n in range(len(results)):
                 results[n]['id']['id'] = int(results[n]['id']['id'])
             return results
-        return response
-
-    def notebooks_list(self, limit=None, search_string=None):
-        limit = limit if limit and isinstance(limit, int) else 99999
-        body = {
-            "filters": [],
-            "offset": 0,
-            "pageSize": limit,
-            "sortColumn": "name",
-            "sortOrder": "ASC",
-        }
-        if search_string:
-            body['filters'] = [{"searchText": search_string}]
-        response = self._http_request(
-            url=self.url.notebooks_list,
-            method="POST",
-            headers={"Content-Type": "application/json"},
-            params={"libraryView": "all"},
-            body=body
-        )
-        response = response.json()
-        # Sort the results by notebook ID
-        self.notebooks = response["result"]["data"]["data"] = self.__sort_notebook_objects_by_id(response["result"]["data"]["data"])
         return response
 
     @staticmethod

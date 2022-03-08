@@ -215,7 +215,7 @@ class LogicHub:
         return modules, other_details
 
     def action_list_notebooks(self):
-        result = self.api.notebooks_list()
+        result = self.api.list_notebooks()
         _ = self._result_dict_has_schema(result, "result", "data", "data", action_description="list notebooks", raise_errors=True)
         return result["result"]["data"]
 
