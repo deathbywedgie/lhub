@@ -1,8 +1,9 @@
 import json
 import re
-from lhub.log import Logger
-from lhub.api import LogicHubAPI
 from copy import deepcopy
+
+from lhub.api import LogicHubAPI
+from lhub.log import Logger
 
 
 class LogicHub:
