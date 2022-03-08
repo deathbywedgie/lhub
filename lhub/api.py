@@ -518,27 +518,6 @@ class LogicHubAPI:
             results = results["data"]
         return results
 
-    def get_event_types(self, limit=25):
-        limit = int(limit or 25)
-        if self.version < 70:
-            return self.__get_event_types_v1(limit=limit)
-        return self.__get_event_types_v2(limit=limit)
-
-    # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
-    def get_rule_sets(self, limit=25):
-        limit = int(limit or 25)
-        params = {
-            "fields": "name,isPublic",
-            "pageSize": limit,
-        }
-        response = self._http_request(url=self.url.rule_sets, params=params)
-        results = response.json()
-        try:
-            results = results["result"]["data"]
-        except Exception:
-            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing rule sets")
-        return results
-
     @staticmethod
     def __sanitize_input_rule_set(rule_set_id):
         if isinstance(rule_set_id, int):
@@ -570,29 +549,35 @@ class LogicHubAPI:
             score = round(score, round_points)
         return score
 
-    def get_stream_by_id(self, stream_id: int):
-        headers = {"Accept": "application/json"}
-        # ToDo Revisit this. I better approach might be:
-        # try:
-        #     response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers)
-        #     return response.json()
-        # except requests.exceptions.HTTPError:
-        #     if self.last_response_status == 400 and 'Cannot find entity for id StreamId' in self.last_response_text:
-        #         raise exceptions.StreamNotFound(stream_id)
-        response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers, test_response=False)
-        try:
-            response.raise_for_status()
-        except requests.exceptions.HTTPError:
-            if response.status_code == 400 and 'Cannot find entity for id StreamId' in response.text:
-                raise exceptions.StreamNotFound(stream_id)
-        return response.json()
+    # ToDo Revisit and finish this
+    # def get_alerts(self, advanced_filter=None, limit=100):
+    #     limit = int(limit) if limit is not None else 100_000
+    #     body = {
+    #         "pageNumber": 0,
+    #         "pageSize": limit,
+    #         "query": advanced_filter,
+    #         "sortCol": "id",
+    #         "sortOrder": "desc"
+    #     }
+    #     connection_list = []
+    #     if not isinstance(connections, (list, tuple)):
+    #         connections = [connections]
+    #     for connection in connections:
+    #         if isinstance(connection, str) and connection.startswith("connection-"):
+    #             connection_list.append(connection)
+    #         else:
+    #             connection_list.append(f"connection-{connection}")
+    #
+    #     headers = {"Content-Type": "application/json"}
+    #     # response = self._http_request(method="POST", url=self.url.connection_status, headers=headers, body=json.dumps(connection_list))
+    #     response = self._http_request(method="POST", url=self.url.connection_status, headers=headers, body=connection_list)
+    #     return response.json()
 
-    def get_stream_states(self, stream_ids: list):
-        new_stream_id_list = []
-        for s in stream_ids:
-            new_stream_id_list.append(f'stream-{s}')
-        body = {"streams": new_stream_id_list}
-        response = self._http_request(method="POST", url=self.url.stream_states, body=body)
+    def get_batch_results_by_id(self, batch_id: int, limit=1000, offset=0):
+        limit = int(limit or 1000)
+        offset = int(offset or 0)
+        params = {"fields": "*", "pageSize": limit, "after": offset, "cachedOnly": "true"}
+        response = self._http_request(url=self.url.batch_results_by_id.format(int(batch_id)), params=params)
         return response.json()
 
     def get_batches_by_stream_id(self, stream_id, limit=25, offset=0, statuses=None, exclude_empty_results=False):
@@ -606,77 +591,65 @@ class LogicHubAPI:
         response = self._http_request(method="POST", url=self.url.stream_batches.format(stream_id), params=params, body=body)
         return response.json()
 
-    def get_batch_results_by_id(self, batch_id: int, limit=1000, offset=0):
-        limit = int(limit or 1000)
-        offset = int(offset or 0)
-        params = {"fields": "*", "pageSize": limit, "after": offset, "cachedOnly": "true"}
-        response = self._http_request(url=self.url.batch_results_by_id.format(int(batch_id)), params=params)
-        return response.json()
+    def get_connection_status(self, connections: list):
+        """
+        Get status of one or more connections
+        :param connections: list of connection IDs, either as ints (like [6, 8]) or in full form (like ["connection-6", "connection-8"])
+        :return:
+        """
+        connection_list = []
+        if not isinstance(connections, (list, tuple)):
+            connections = [connections]
+        for connection in connections:
+            if isinstance(connection, str) and connection.startswith("connection-"):
+                connection_list.append(connection)
+            else:
+                connection_list.append(f"connection-{connection}")
 
-    def get_integrations(self):
-        response = self._http_request(method="GET", url=self.url.integrations)
-        return response.json()
-
-    def get_version_info(self):
-        self.log.debug("Fetching LogicHub version")
-        try:
-            response = self._http_request(
-                url=self.url.version,
-                reauth=False,
-                timeout=self.http_timeout_default)
-            response_dict = response.json()
-        except (KeyError, ValueError, TypeError, IndexError):
-            raise exceptions.LhBaseException("LogicHub version could not be established")
-        else:
-            # Update version information any time this api call is run successfully
-            self.version_info = response_dict
-            self.version = float(re.match("m(.*)", self.version_info["version"]).group(1))
-        return response_dict
-
-    # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
-    def get_rules_for_rule_set(self, rule_set):
-        rule_set = LogicHubAPI.__sanitize_input_rule_set(rule_set)
-        params = {
-            "fields": "name,isPublic,rules[filter,values*1000,score]*1000",
-        }
-        response = self._http_request(url=self.url.rule_set.format(rule_set), params=params)
-        results = response.json()
-        try:
-            results = results["result"]["rules"]["data"]
-        except Exception:
-            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing rules of a rule set")
-        return results
-
-    # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
-    # ToDo Create an action method for this, and update the beta integration action to use it
-    def add_scoring_rule(self, rule_set, field_mappings, score: float or str):
-        rule_set = LogicHubAPI.__sanitize_input_rule_set(rule_set)
-        field_mappings = LogicHubAPI.__sanitize_input_rule_field_mappings(field_mappings)
-        score = LogicHubAPI.__sanitize_input_rule_score(score)
         headers = {"Content-Type": "application/json"}
-        body = {
-            "method": "addRule",
-            "parameters": {
-                "values": [field_mappings],
-                "score": score
-            }
-        }
-        response = self._http_request(url=self.url.rule_set.format(rule_set), method="POST", body=body, headers=headers)
+        # response = self._http_request(method="POST", url=self.url.connection_status, headers=headers, body=json.dumps(connection_list))
+        response = self._http_request(method="POST", url=self.url.connection_status, headers=headers, body=connection_list)
+        return response.json()
+
+    # ToDo in progress
+    def get_custom_list_data(self, list_id, filter_sql: str = None, limit: int = None, offset: int = None):
+        """
+
+        :param list_id: numeric ID for requested custom list
+        :param filter_sql: Optional: filter custom list data to return (spark SQL)
+        :param limit: Optional: limit the number of results to return (default is 10,000)
+        :param offset: Optional: if using pagination, provide the entry number to fetch (default is 0)
+        :return:
+        """
+        assert isinstance(list_id, int) or int(list_id)
+        list_id = int(list_id)
+        if limit:
+            assert isinstance(limit, int) or int(limit)
+        if offset:
+            assert isinstance(offset, int) or int(offset)
+        limit = int(limit or 10_000)
+        offset = int(offset or 0)
+        if filter_sql:
+            url = self.url.custom_list_data_with_filtering.format(list_id)
+            method = "POST"
+            payload = filter_sql.strip()
+        else:
+            url = self.url.custom_list_data
+            method = "GET"
+            payload = None
+        response = self._http_request(
+            method=method,
+            url=url,
+            params={"offset": offset, "limit": limit},
+            body=payload,
+            headers={'Content-Type': 'application/json'},
+        )
         results = response.json()
         try:
             results = results["result"]
         except Exception:
-            raise exceptions.UnexpectedOutput("API response does not match the expected schema for adding a scoring rule")
+            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
         return results
-
-    def get_rule_set_by_name(self, name):
-        rule_sets = self.get_rule_sets()
-        rule_set = [x for x in rule_sets if x['name'] == name]
-        if not rule_set:
-            raise exceptions.RuleSetNotFound(f"No rule set found matching name: {name}")
-        rule_set = rule_set[0]
-        rule_set['rules'] = self.get_rules_for_rule_set(rule_set['id'])
-        return rule_set
 
     def get_custom_lists(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = None, verify_results=True):
         """
@@ -719,44 +692,124 @@ class LogicHubAPI:
                 raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
         return results
 
-    # ToDo in progress
-    def get_custom_list_data(self, list_id, filter_sql: str = None, limit: int = None, offset: int = None):
-        """
+    def get_event_types(self, limit=25):
+        limit = int(limit or 25)
+        if self.version < 70:
+            return self.__get_event_types_v1(limit=limit)
+        return self.__get_event_types_v2(limit=limit)
 
-        :param list_id: numeric ID for requested custom list
-        :param filter_sql: Optional: filter custom list data to return (spark SQL)
-        :param limit: Optional: limit the number of results to return (default is 10,000)
-        :param offset: Optional: if using pagination, provide the entry number to fetch (default is 0)
-        :return:
-        """
-        assert isinstance(list_id, int) or int(list_id)
-        list_id = int(list_id)
-        if limit:
-            assert isinstance(limit, int) or int(limit)
-        if offset:
-            assert isinstance(offset, int) or int(offset)
-        limit = int(limit or 10_000)
-        offset = int(offset or 0)
-        if filter_sql:
-            url = self.url.custom_list_data_with_filtering.format(list_id)
-            method = "POST"
-            payload = filter_sql.strip()
+    def get_integrations(self):
+        response = self._http_request(method="GET", url=self.url.integrations)
+        return response.json()
+
+    def get_rule_set_by_name(self, name):
+        rule_sets = self.get_rule_sets()
+        rule_set = [x for x in rule_sets if x['name'] == name]
+        if not rule_set:
+            raise exceptions.RuleSetNotFound(f"No rule set found matching name: {name}")
+        rule_set = rule_set[0]
+        rule_set['rules'] = self.get_rules_for_rule_set(rule_set['id'])
+        return rule_set
+
+    # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
+    def get_rule_sets(self, limit=25):
+        limit = int(limit or 25)
+        params = {
+            "fields": "name,isPublic",
+            "pageSize": limit,
+        }
+        response = self._http_request(url=self.url.rule_sets, params=params)
+        results = response.json()
+        try:
+            results = results["result"]["data"]
+        except Exception:
+            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing rule sets")
+        return results
+
+    # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
+    def get_rules_for_rule_set(self, rule_set):
+        rule_set = LogicHubAPI.__sanitize_input_rule_set(rule_set)
+        params = {
+            "fields": "name,isPublic,rules[filter,values*1000,score]*1000",
+        }
+        response = self._http_request(url=self.url.rule_set.format(rule_set), params=params)
+        results = response.json()
+        try:
+            results = results["result"]["rules"]["data"]
+        except Exception:
+            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing rules of a rule set")
+        return results
+
+    def get_stream_by_id(self, stream_id: int):
+        headers = {"Accept": "application/json"}
+        # ToDo Revisit this. I better approach might be:
+        # try:
+        #     response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers)
+        #     return response.json()
+        # except requests.exceptions.HTTPError:
+        #     if self.last_response_status == 400 and 'Cannot find entity for id StreamId' in self.last_response_text:
+        #         raise exceptions.StreamNotFound(stream_id)
+        response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers, test_response=False)
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError:
+            if response.status_code == 400 and 'Cannot find entity for id StreamId' in response.text:
+                raise exceptions.StreamNotFound(stream_id)
+        return response.json()
+
+    def get_stream_states(self, stream_ids: list):
+        new_stream_id_list = []
+        for s in stream_ids:
+            new_stream_id_list.append(f'stream-{s}')
+        body = {"streams": new_stream_id_list}
+        response = self._http_request(method="POST", url=self.url.stream_states, body=body)
+        return response.json()
+
+    def get_version_info(self):
+        self.log.debug("Fetching LogicHub version")
+        try:
+            response = self._http_request(
+                url=self.url.version,
+                reauth=False,
+                timeout=self.http_timeout_default)
+            response_dict = response.json()
+        except (KeyError, ValueError, TypeError, IndexError):
+            raise exceptions.LhBaseException("LogicHub version could not be established")
         else:
-            url = self.url.custom_list_data
-            method = "GET"
-            payload = None
-        response = self._http_request(
-            method=method,
-            url=url,
-            params={"offset": offset, "limit": limit},
-            body=payload,
-            headers={'Content-Type': 'application/json'},
-        )
+            # Update version information any time this api call is run successfully
+            self.version_info = response_dict
+            self.version = float(re.match("m(.*)", self.version_info["version"]).group(1))
+        return response_dict
+
+    def get_workflow_by_id(self, workflow_id: int):
+        assert isinstance(workflow_id, int), "Workflow ID must be an integer"
+        response = self._http_request(method="GET", url=self.url.case_status_workflow_by_id.format(workflow_id))
+        return response.json()
+
+    def get_workflows(self):
+        response = self._http_request(method="GET", url=self.url.case_status_list_workflows)
+        return response.json()
+
+    # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
+    # ToDo Create an action method for this, and update the beta integration action to use it
+    def add_scoring_rule(self, rule_set, field_mappings, score: float or str):
+        rule_set = LogicHubAPI.__sanitize_input_rule_set(rule_set)
+        field_mappings = LogicHubAPI.__sanitize_input_rule_field_mappings(field_mappings)
+        score = LogicHubAPI.__sanitize_input_rule_score(score)
+        headers = {"Content-Type": "application/json"}
+        body = {
+            "method": "addRule",
+            "parameters": {
+                "values": [field_mappings],
+                "score": score
+            }
+        }
+        response = self._http_request(url=self.url.rule_set.format(rule_set), method="POST", body=body, headers=headers)
         results = response.json()
         try:
             results = results["result"]
         except Exception:
-            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
+            raise exceptions.UnexpectedOutput("API response does not match the expected schema for adding a scoring rule")
         return results
 
     def execute_command(self, command_payload, limit=25):
@@ -895,15 +948,6 @@ class LogicHubAPI:
             _response = self._http_request(url=self.url.flow_export.format(_flow_id), test_response=False)
             self._save_export_to_disk(response=_response, export_folder=export_folder, resource_id=_flow_id, resource_name=_flow_name, file_info=_file_info)
 
-    def get_workflows(self):
-        response = self._http_request(method="GET", url=self.url.case_status_list_workflows)
-        return response.json()
-
-    def get_workflow_by_id(self, workflow_id: int):
-        assert isinstance(workflow_id, int), "Workflow ID must be an integer"
-        response = self._http_request(method="GET", url=self.url.case_status_workflow_by_id.format(workflow_id))
-        return response.json()
-
     def list_baselines(self):
         params = {"libraryView": "all"}
         body = {"filters": [], "offset": 0, "pageSize": 9999, "sortColumn": "lastUpdated", "sortOrder": "DESC"}
@@ -950,50 +994,6 @@ class LogicHubAPI:
 
         response = self._http_request(method="POST", url=self.url.streams, body=body_dict, headers=headers, params=params)
         return response.json()
-
-    def get_connection_status(self, connections: list):
-        """
-        Get status of one or more connections
-        :param connections: list of connection IDs, either as ints (like [6, 8]) or in full form (like ["connection-6", "connection-8"])
-        :return:
-        """
-        connection_list = []
-        if not isinstance(connections, (list, tuple)):
-            connections = [connections]
-        for connection in connections:
-            if isinstance(connection, str) and connection.startswith("connection-"):
-                connection_list.append(connection)
-            else:
-                connection_list.append(f"connection-{connection}")
-
-        headers = {"Content-Type": "application/json"}
-        # response = self._http_request(method="POST", url=self.url.connection_status, headers=headers, body=json.dumps(connection_list))
-        response = self._http_request(method="POST", url=self.url.connection_status, headers=headers, body=connection_list)
-        return response.json()
-
-    # ToDo Revisit and finish this
-    # def get_alerts(self, advanced_filter=None, limit=100):
-    #     limit = int(limit) if limit is not None else 100_000
-    #     body = {
-    #         "pageNumber": 0,
-    #         "pageSize": limit,
-    #         "query": advanced_filter,
-    #         "sortCol": "id",
-    #         "sortOrder": "desc"
-    #     }
-    #     connection_list = []
-    #     if not isinstance(connections, (list, tuple)):
-    #         connections = [connections]
-    #     for connection in connections:
-    #         if isinstance(connection, str) and connection.startswith("connection-"):
-    #             connection_list.append(connection)
-    #         else:
-    #             connection_list.append(f"connection-{connection}")
-    #
-    #     headers = {"Content-Type": "application/json"}
-    #     # response = self._http_request(method="POST", url=self.url.connection_status, headers=headers, body=json.dumps(connection_list))
-    #     response = self._http_request(method="POST", url=self.url.connection_status, headers=headers, body=connection_list)
-    #     return response.json()
 
     def reprocess_batch(self, batch_id):
         """

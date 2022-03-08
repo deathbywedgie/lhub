@@ -52,6 +52,19 @@ class LogicHub:
 
         return result_output, warnings
 
+    @staticmethod
+    def _result_dict_has_schema(result_dict, *fields, raise_errors=False, action_description=None, accept_null=False):
+        _dict = result_dict
+        for field in fields:
+            if field not in _dict.keys() or _dict.get(field) is None and not accept_null:
+                if raise_errors is True:
+                    action_description = f" [{action_description}]" if action_description else ''
+                    err_msg = f"Response{action_description} did not match the expected JSON schema. Missing expected key: {field}"
+                    raise ValueError(err_msg)
+                return False
+            _dict = _dict[field]
+        return True
+
     def execute_command(self, command_name, input_dict, reformat=True, result_limit=25):
         response = self.api.execute_command({"command": command_name, "parameterValues": input_dict, "limit": result_limit})
         if not reformat:
@@ -60,14 +73,30 @@ class LogicHub:
         response, _ = self._reformat_cmd_results(response)
         return response
 
-    def action_list_custom_lists(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = None):
-        results = self.api.get_custom_lists(search_text=search_text, filters=filters, limit=limit, offset=offset, verify_results=False)
-        warnings = []
-        try:
-            results = results["result"]["data"]
-        except KeyError:
-            warnings.append("API response does not match the expected schema for listing custom lists")
-        return results, warnings
+    def action_get_batch_results_by_id(self, batch_id: int, limit=1000, keep_additional_info=False):
+        result = self.api.get_batch_results_by_id(batch_id=batch_id, limit=limit)
+        _ = self._result_dict_has_schema(result, "result", "data", raise_errors=True, action_description="fetch batch results")
+        result = result["result"]["data"]
+        if not keep_additional_info:
+            result = [r["columns"] for r in result]
+        return result
+
+    def action_get_batches_by_stream_id(self, stream_id: int, limit=None, statuses=None, exclude_empty_results=False):
+        """
+        Get all batches for a given stream
+
+        :param stream_id: ID of the stream
+        :param limit: Optional: set a batch limit (default it unlimited, despite the fact that the API's actual default is 25)
+        :param statuses: Optional: List of statuses to include in the results
+        :param exclude_empty_results: Optional: exclude successful batches which did not output any data
+        :return: Batch results in the form of a list of dicts
+        """
+        result = self.api.get_batches_by_stream_id(stream_id, limit=limit or -1, statuses=statuses, exclude_empty_results=exclude_empty_results)
+        _ = self._result_dict_has_schema(result, "result", "data", raise_errors=True, action_description="get batches by stream ID")
+        return result["result"]["data"]
+
+    def action_get_case_prefix(self):
+        return self.case_prefix
 
     def action_get_integrations(self, name_filter: str = None, filter_type="contains"):
         filter_type = filter_type.lower()
@@ -93,32 +122,15 @@ class LogicHub:
                 results = new_result
         return results, categories
 
+    def action_get_notebooks_attached_to_case(self, case_id):
+        response = self.api.case_list_attached_notebooks(case_id)
+        _ = self._result_dict_has_schema(response, "result", action_description="get notebooks from case", raise_errors=True)
+        return response.get('result', [])
+
     # ToDo This finally works as of m91. Add an action for it.
     def action_get_stream_by_id(self, stream_id: int):
         result = self.api.get_stream_by_id(stream_id)
         return result["result"]
-
-    def action_get_batches_by_stream_id(self, stream_id: int, limit=None, statuses=None, exclude_empty_results=False):
-        """
-        Get all batches for a given stream
-
-        :param stream_id: ID of the stream
-        :param limit: Optional: set a batch limit (default it unlimited, despite the fact that the API's actual default is 25)
-        :param statuses: Optional: List of statuses to include in the results
-        :param exclude_empty_results: Optional: exclude successful batches which did not output any data
-        :return: Batch results in the form of a list of dicts
-        """
-        result = self.api.get_batches_by_stream_id(stream_id, limit=limit or -1, statuses=statuses, exclude_empty_results=exclude_empty_results)
-        _ = self._result_dict_has_schema(result, "result", "data", raise_errors=True, action_description="get batches by stream ID")
-        return result["result"]["data"]
-
-    def action_get_batch_results_by_id(self, batch_id: int, limit=1000, keep_additional_info=False):
-        result = self.api.get_batch_results_by_id(batch_id=batch_id, limit=limit)
-        _ = self._result_dict_has_schema(result, "result", "data", raise_errors=True, action_description="fetch batch results")
-        result = result["result"]["data"]
-        if not keep_additional_info:
-            result = [r["columns"] for r in result]
-        return result
 
     def action_get_version(self):
         return self.api.version_info
@@ -134,19 +146,6 @@ class LogicHub:
         _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="fetch workflow by ID")
         return result["result"]
 
-    @staticmethod
-    def _result_dict_has_schema(result_dict, *fields, raise_errors=False, action_description=None, accept_null=False):
-        _dict = result_dict
-        for field in fields:
-            if field not in _dict.keys() or _dict.get(field) is None and not accept_null:
-                if raise_errors is True:
-                    action_description = f" [{action_description}]" if action_description else ''
-                    err_msg = f"Response{action_description} did not match the expected JSON schema. Missing expected key: {field}"
-                    raise ValueError(err_msg)
-                return False
-            _dict = _dict[field]
-        return True
-
     def action_list_baselines(self):
         result = self.api.list_baselines()
         _ = self._result_dict_has_schema(result, "result", "data", "data", raise_errors=True, action_description="list baselines")
@@ -161,6 +160,34 @@ class LogicHub:
             _id = int(b['id']['id'])
             baselines[n]['baseline_config_status'] = state_map.get(f"stream-{b['id']['id']}")
         return result
+
+    def action_list_connections(self, add_status=False):
+        result = self.api.list_connections()
+        _ = self._result_dict_has_schema(result, "result", "data", action_description="list connections", raise_errors=True)
+        result = result["result"]["data"]
+        if not add_status:
+            return result
+
+        connections = result["data"]
+        connection_ids = [connection["id"]["id"] for connection in connections]
+        status_results = self.api.get_connection_status(connection_ids)
+        statuses = {status["connectionEntityId"].replace("connection-", ''): status["status"] for status in status_results['result']}
+        for n in range(len(connections)):
+            connection = connections[n]
+            connection_id = str(connection["id"]["id"])
+            connection["status"] = statuses.get(connection_id)
+            if not connection["status"]:
+                raise ValueError(f"Connection ID {connection_id} missing from status list")
+        return result
+
+    def action_list_custom_lists(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = None):
+        results = self.api.get_custom_lists(search_text=search_text, filters=filters, limit=limit, offset=offset, verify_results=False)
+        warnings = []
+        try:
+            results = results["result"]["data"]
+        except KeyError:
+            warnings.append("API response does not match the expected schema for listing custom lists")
+        return results, warnings
 
     def action_list_fields(self, map_mode=None):
         assert not map_mode or map_mode in ['id', 'name'], f'Invalid output format: {map_mode}'
@@ -185,29 +212,25 @@ class LogicHub:
 
         return modules, other_details
 
-    def action_list_connections(self, add_status=False):
-        result = self.api.list_connections()
-        _ = self._result_dict_has_schema(result, "result", "data", action_description="list connections", raise_errors=True)
-        result = result["result"]["data"]
-        if not add_status:
-            return result
-
-        connections = result["data"]
-        connection_ids = [connection["id"]["id"] for connection in connections]
-        status_results = self.api.get_connection_status(connection_ids)
-        statuses = {status["connectionEntityId"].replace("connection-", ''): status["status"] for status in status_results['result']}
-        for n in range(len(connections)):
-            connection = connections[n]
-            connection_id = str(connection["id"]["id"])
-            connection["status"] = statuses.get(connection_id)
-            if not connection["status"]:
-                raise ValueError(f"Connection ID {connection_id} missing from status list")
-        return result
+    def action_list_notebooks(self):
+        result = self.api.notebooks_list()
+        _ = self._result_dict_has_schema(result, "result", "data", "data", action_description="list notebooks", raise_errors=True)
+        return result["result"]["data"]
 
     def action_list_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
         result = self.api.list_streams(search_text=search_text, filters=filters, limit=limit, offset=offset)
         _ = self._result_dict_has_schema(result, "result", "data", "data", raise_errors=True, action_description="list streams")
         return result["result"]["data"]["data"]
+
+    def action_list_user_groups(self, hide_inactive=False):
+        result = self.api.user_groups(hide_inactive=hide_inactive)
+        _ = self._result_dict_has_schema(result, "result", "data", action_description="list user groups", raise_errors=True)
+        return result["result"]
+
+    def action_list_users(self, hide_inactive=False):
+        result = self.api.users(hide_inactive=hide_inactive)
+        _ = self._result_dict_has_schema(result, "result", "data", action_description="list users", raise_errors=True)
+        return result["result"]
 
     def action_list_workflows(self):
         result = self.api.get_workflows()
@@ -216,16 +239,6 @@ class LogicHub:
 
     def action_reprocess_batch(self, batch_id):
         return self.api.reprocess_batch(batch_id)
-
-    def action_list_notebooks(self):
-        result = self.api.notebooks_list()
-        _ = self._result_dict_has_schema(result, "result", "data", "data", action_description="list notebooks", raise_errors=True)
-        return result["result"]["data"]
-
-    def action_get_notebooks_attached_to_case(self, case_id):
-        response = self.api.case_list_attached_notebooks(case_id)
-        _ = self._result_dict_has_schema(response, "result", action_description="get notebooks from case", raise_errors=True)
-        return response.get('result', [])
 
     def action_attach_notebooks_from_case(self, case_id, notebook_ids):
         current_notebooks = self.api.case_list_attached_notebooks(case_id, results_only=True)
@@ -253,16 +266,6 @@ class LogicHub:
         if not current_notebooks:
             return {"result": "no changes made"}
         return self.api.case_overwrite_attached_notebooks(case_id, [])
-
-    def action_list_user_groups(self, hide_inactive=False):
-        result = self.api.user_groups(hide_inactive=hide_inactive)
-        _ = self._result_dict_has_schema(result, "result", "data", action_description="list user groups", raise_errors=True)
-        return result["result"]
-
-    def action_list_users(self, hide_inactive=False):
-        result = self.api.users(hide_inactive=hide_inactive)
-        _ = self._result_dict_has_schema(result, "result", "data", action_description="list users", raise_errors=True)
-        return result["result"]
 
     @staticmethod
     def __enrich_alert_data(alert: dict, included_standard_fields=None, included_additional_fields=None):
@@ -350,9 +353,6 @@ class LogicHub:
                 for alert in alerts
             ]
         return output
-
-    def action_get_case_prefix(self):
-        return self.case_prefix
 
     def action_pause_stream(self, stream_id):
         result = self.api.stream_pause(stream_id=stream_id)
