@@ -1,9 +1,10 @@
 import json
 import os
 import shutil
-import time
 from copy import deepcopy
 from pathlib import Path
+
+import time
 
 from lhub.common.dicts_and_lists import sort_dicts_and_lists
 from lhub.common.shell import query_yes_no
