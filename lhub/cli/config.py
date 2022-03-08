@@ -114,9 +114,6 @@ class ConfigFile:
                             break
                 elif v['type'] is bool:
                     instance_config[k] = query_yes_no(f'\nValue for {k}? ', default=v.get('default'))
-                # elif v['type'] is list:
-                #     if v.get('required') is not True:
-                #         if query_yes_no(f'\nAdd Value for {k}? ', default=v.get('default'))
 
         self.config[name] = instance_config
         if starting_config != self.config:

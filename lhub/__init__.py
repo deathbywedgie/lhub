@@ -1,2 +1,3 @@
-from lhub import common, config, exceptions, shell
-from lhub.lhub import LogicHub, LogicHubAPI
+from lhub import api, common, exceptions, log
+from lhub.api import LogicHubAPI
+from lhub.lhub import LogicHub
