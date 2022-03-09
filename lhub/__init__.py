@@ -1,4 +1,4 @@
-from lhub import api, common, exceptions, log
-from .lhub import LogicHub
-from .api import LogicHubAPI
-from .url import URLs
+from lhub import api, cli, common, exceptions, log
+from lhub.lhub import LogicHub
+from lhub.api import LogicHubAPI
+from lhub.url import URLs

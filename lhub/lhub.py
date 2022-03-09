@@ -2,9 +2,9 @@ import json
 import re
 from copy import deepcopy
 
-from .api import LogicHubAPI
-from .log import Logger
-from .common.helpers import format_notebook_ids
+from lhub.api import LogicHubAPI
+from lhub.log import Logger
+from lhub.common.helpers import format_notebook_ids
 
 
 class Actions:
