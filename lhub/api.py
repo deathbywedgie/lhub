@@ -13,6 +13,7 @@ import time
 from lhub import exceptions
 from .log import Logger
 from .url import URLs
+from .common import helpers
 
 cached_obj = namedtuple('CachedObject', ['time', 'value'])
 
@@ -323,37 +324,6 @@ class LogicHubAPI:
             results = results["data"]
         return results
 
-    @staticmethod
-    def __sanitize_input_rule_set(rule_set_id):
-        if isinstance(rule_set_id, int):
-            return rule_set_id
-        rule_set_num_str = re.sub(r'\D+', '', str(rule_set_id))
-        if not rule_set_num_str:
-            raise ValueError("Invalid rule set ID")
-        return int(rule_set_num_str)
-
-    @staticmethod
-    def __sanitize_input_rule_field_mappings(field_mappings):
-        if not isinstance(field_mappings, dict):
-            try:
-                field_mappings = json.loads(field_mappings)
-            except Exception:
-                raise exceptions.Formatting.InvalidRuleFormat(field_mappings)
-        if not field_mappings:
-            raise exceptions.Formatting.InvalidRuleFormat(field_mappings)
-        return field_mappings
-
-    @staticmethod
-    def __sanitize_input_rule_score(score, round_points: int = None):
-        try:
-            score = float(score)
-            assert 10 >= score >= 0
-        except (ValueError, TypeError, AssertionError):
-            raise ValueError("Score must be a number between 0 and 10")
-        if round_points:
-            score = round(score, round_points)
-        return score
-
     # ToDo Revisit and finish this
     # def get_alerts(self, advanced_filter=None, limit=100):
     #     limit = int(limit) if limit is not None else 100_000
@@ -533,7 +503,7 @@ class LogicHubAPI:
 
     # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
     def get_rules_for_rule_set(self, rule_set):
-        rule_set = LogicHubAPI.__sanitize_input_rule_set(rule_set)
+        rule_set = helpers.sanitize_input_rule_set_id(rule_set)
         params = {
             "fields": "name,isPublic,rules[filter,values*1000,score]*1000",
         }
@@ -598,9 +568,9 @@ class LogicHubAPI:
     # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
     # ToDo Create an action method for this, and update the beta integration action to use it
     def add_scoring_rule(self, rule_set, field_mappings, score: float or str):
-        rule_set = LogicHubAPI.__sanitize_input_rule_set(rule_set)
-        field_mappings = LogicHubAPI.__sanitize_input_rule_field_mappings(field_mappings)
-        score = LogicHubAPI.__sanitize_input_rule_score(score)
+        rule_set = helpers.sanitize_input_rule_set_id(rule_set)
+        field_mappings = helpers.sanitize_input_rule_field_mappings(field_mappings)
+        score = helpers.sanitize_input_rule_score(score)
         headers = {"Content-Type": "application/json"}
         body = {
             "method": "addRule",
@@ -801,7 +771,7 @@ class LogicHubAPI:
         )
         response = response.json()
         # Sort the results by notebook ID
-        self.notebooks = response["result"]["data"]["data"] = self.__sort_notebook_objects_by_id(response["result"]["data"]["data"])
+        self.notebooks = response["result"]["data"]["data"] = helpers.sort_notebook_objects_by_id(response["result"]["data"]["data"])
         return response
 
     def list_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
@@ -851,7 +821,7 @@ class LogicHubAPI:
     #         alert_ids = [alert_ids]
     #     updated_alerts = []
     #     for i in alert_ids:
-    #         i = self._format_alert_id(i)
+    #         i = helpers.format_alert_id(i)
     #         if i:
     #             updated_alerts.append(i)
     #     alert_ids = updated_alerts
@@ -876,10 +846,6 @@ class LogicHubAPI:
         self.case_prefix = output['result']
         return output
 
-    @staticmethod
-    def __sort_notebook_objects_by_id(notebooks):
-        return sorted(notebooks, key=lambda x: (x['id']['id']))
-
     def case_list_attached_notebooks(self, case_id, results_only=False):
         case_id = self._format_case_id(case_id)
         body = {
@@ -894,20 +860,12 @@ class LogicHubAPI:
         )
         response = response.json()
         # Sort the results by notebook ID
-        results = response['result'] = self.__sort_notebook_objects_by_id(response['result'])
+        results = response['result'] = helpers.sort_notebook_objects_by_id(response['result'])
         if results_only:
             for n in range(len(results)):
                 results[n]['id']['id'] = int(results[n]['id']['id'])
             return results
         return response
-
-    @staticmethod
-    def _format_alert_id(alert_id):
-        if isinstance(alert_id, str):
-            if not re.match(r'^(?:alert-)?\d+$', alert_id):
-                raise exceptions.Formatting.InvalidAlertIdFormat(alert_id)
-            alert_id = re.sub(r'\D+', '', alert_id)
-        return int(alert_id)
 
     def _format_case_id(self, case_id):
         if not case_id:
@@ -917,36 +875,8 @@ class LogicHubAPI:
             case_id = f"{self.case_prefix}-{case_id}"
         return case_id
 
-    @staticmethod
-    def _format_notebook_ids(notebook_ids):
-        if not isinstance(notebook_ids, list):
-            notebook_ids = [notebook_ids]
-        final_notebooks = []
-        for input_value in notebook_ids:
-            if isinstance(input_value, dict):
-                # In case a raw notebook object is passed, drill into the 'id' field for the part we need
-                if isinstance(input_value, dict) and isinstance(input_value.get('id'), dict):
-                    input_value = input_value['id']
-                if not input_value or 'id' not in input_value.keys() or not isinstance(input_value['id'], (int, str)):
-                    raise exceptions.Formatting.InvalidNotebookIdFormat(input_value)
-                final_notebooks.append({'key': 'notebook', 'id': int(input_value['id'])})
-            else:
-                try:
-                    final_notebooks.append({'key': 'notebook', 'id': int(input_value)})
-                except (ValueError, TypeError):
-                    raise exceptions.Formatting.InvalidNotebookIdFormat(input_value)
-        return final_notebooks
-
-    @staticmethod
-    def _format_stream_id(alert_id):
-        if isinstance(alert_id, str):
-            if not re.match(r'^(?:stream-)?\d+$', alert_id):
-                raise exceptions.Formatting.InvalidStreamIdFormat(alert_id)
-            alert_id = re.sub(r'\D+', '', alert_id)
-        return int(alert_id)
-
     def case_overwrite_attached_notebooks(self, case_id, notebooks):
-        notebooks = self._format_notebook_ids(notebooks)
+        notebooks = helpers.format_notebook_ids(notebooks)
         case_id = self._format_case_id(case_id)
         body = {
             "notebookAttachmentIds": notebooks,
@@ -995,7 +925,7 @@ class LogicHubAPI:
         return response.json()
 
     def alert_fetch(self, alert_id, return_raw=False, **kwargs):
-        alert_id = self._format_alert_id(alert_id)
+        alert_id = helpers.format_alert_id(alert_id)
         url = self.url.alert_fetch.format(alert_id)
         # Send request, but disable immediate testing in order to do specialized testing first
         response = self._http_request(method="GET", url=url, test_response=False, **kwargs)
@@ -1047,12 +977,12 @@ class LogicHubAPI:
 
     def stream_pause(self, stream_id, **kwargs):
         # Sanitize stream ID
-        body = [f"stream-{self._format_stream_id(stream_id)}"]
+        body = [f"stream-{helpers.format_stream_id(stream_id)}"]
         response = self._http_request(method="POST", url=self.url.stream_pause, body=body, **kwargs)
         return response.json()
 
     def stream_resume(self, stream_id, **kwargs):
         # Sanitize stream ID
-        body = [f"stream-{self._format_stream_id(stream_id)}"]
+        body = [f"stream-{helpers.format_stream_id(stream_id)}"]
         response = self._http_request(method="POST", url=self.url.stream_resume, body=body, **kwargs)
         return response.json()
