@@ -826,7 +826,7 @@ class LogicHubAPI:
     #             updated_alerts.append(i)
     #     alert_ids = updated_alerts
     #
-    #     case_id = self._format_case_id(case_id)
+    #     case_id = helpers.format_case_id_with_prefix(case_id, self.case_prefix)
     #
     #     field_id = self.system_field_lh_linked_alerts.get('id')
     #     body = {"fields": [{"id": field_id, "value": alert_ids}]}
@@ -847,7 +847,7 @@ class LogicHubAPI:
         return output
 
     def case_list_attached_notebooks(self, case_id, results_only=False):
-        case_id = self._format_case_id(case_id)
+        case_id = helpers.format_case_id_with_prefix(case_id, self.case_prefix)
         body = {
             "id": case_id,
             "key": "case",
@@ -867,17 +867,9 @@ class LogicHubAPI:
             return results
         return response
 
-    def _format_case_id(self, case_id):
-        if not case_id:
-            raise ValueError("Case ID cannot be blank")
-        case_id = str(case_id).strip()
-        if '-' not in case_id:
-            case_id = f"{self.case_prefix}-{case_id}"
-        return case_id
-
     def case_overwrite_attached_notebooks(self, case_id, notebooks):
         notebooks = helpers.format_notebook_ids(notebooks)
-        case_id = self._format_case_id(case_id)
+        case_id = helpers.format_case_id_with_prefix(case_id, self.case_prefix)
         body = {
             "notebookAttachmentIds": notebooks,
             "notebookAttachedEntityId": {

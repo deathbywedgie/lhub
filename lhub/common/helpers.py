@@ -11,6 +11,15 @@ def format_alert_id(alert_id):
     return int(alert_id)
 
 
+def format_case_id_with_prefix(case_id, case_prefix):
+    if not case_id and not str(case_id).strip():
+        raise ValueError("Case ID cannot be blank")
+    case_id = str(case_id).strip()
+    if '-' not in case_id:
+        case_id = f"{case_prefix}-{case_id}"
+    return case_id
+
+
 def format_notebook_ids(notebook_ids):
     if not isinstance(notebook_ids, list):
         notebook_ids = [notebook_ids]
