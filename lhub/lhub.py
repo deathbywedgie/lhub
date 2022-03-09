@@ -216,6 +216,14 @@ class Actions:
             warnings.append("API response does not match the expected schema for listing custom lists")
         return results, warnings
 
+    def list_dashboards_with_widgets(self, include_not_imported=True):
+        result = self.__api.list_dashboards_with_widgets()
+        _ = self._result_dict_has_schema(result, "result", "objects", raise_errors=True, action_description="list fields")
+        result = result['result']['objects']
+        if not include_not_imported:
+            result = [r for r in result if r['metadata']["contentRepoStatus"] != "Global"]
+        return result
+
     def list_fields(self, map_mode=None):
         assert not map_mode or map_mode in ['id', 'name'], f'Invalid output format: {map_mode}'
         result = self.__api.fields

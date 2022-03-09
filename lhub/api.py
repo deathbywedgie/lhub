@@ -737,6 +737,10 @@ class LogicHubAPI:
         response = self._http_request(method="POST", url=self.url.connections, headers=headers, params=params, body=body)
         return response.json()
 
+    def list_dashboards_with_widgets(self):
+        response = self._http_request(url=self.url.dashboards_and_widgets)
+        return response.json()
+
     def list_fields(self, params: dict = None, **kwargs):
         params = params or {"systemFields": "true", "pageSize": 9999, "after": 0}
         response = self._http_request(method="GET", url=self.url.fields, params=params, **kwargs)
