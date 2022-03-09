@@ -11,7 +11,7 @@ import sys
 import time
 
 from lhub import exceptions
-from lhub.log import Logger
+from .log import Logger
 from .url import URLs
 
 cached_obj = namedtuple('CachedObject', ['time', 'value'])
