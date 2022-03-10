@@ -72,9 +72,6 @@ class Actions:
         if not included_standard_fields and not included_additional_fields:
             return alert
 
-        print(f'[DEBUG] alert fetched')
-        # ToDo 2022-03-09, research further and verify since m92: appears that at least as of m92 the
-        #  "additional_fields" field is now a proper dict instead of a list of dicts
         additional_fields = alert.pop('additionalFields', {})
         if isinstance(additional_fields, list):
             additional_fields = [f for f in additional_fields if not included_additional_fields or f.get('displayName') in included_additional_fields]
@@ -82,9 +79,6 @@ class Actions:
             additional_fields = {k: v for k, v in additional_fields.items() if not included_additional_fields or k in included_additional_fields}
 
         mapped_fields = alert.pop('mappedAlertFieldValues', [])
-        # ToDo 2022-03-10: revisit again eventually
-        #  as of m92, this hasn't changed like additional fields did, but in case it does in the future,
-        #  use the same logic to first check that it's a list of dicts instead of just a dict.
         if isinstance(mapped_fields, list):
             mapped_fields = [f for f in mapped_fields if not included_standard_fields or f.get('displayName') in included_standard_fields]
         else:
