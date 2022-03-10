@@ -3,7 +3,7 @@ import os
 import configobj
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
-from lhub import LogicHub
+from ..lhub import LogicHub
 from .encryption import Encryption
 import getpass
 

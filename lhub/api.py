@@ -10,10 +10,10 @@ import requests
 import sys
 import time
 
-from lhub import exceptions
-from lhub.log import Logger
-from lhub.url import URLs
-from lhub.common import helpers
+from . import exceptions
+from .log import Logger
+from .url import URLs
+from .common import helpers
 
 cached_obj = namedtuple('CachedObject', ['time', 'value'])
 

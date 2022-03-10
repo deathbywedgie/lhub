@@ -1,1 +1,4 @@
 requests
+configobj
+dataclasses_json
+dataclasses
