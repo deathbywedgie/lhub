@@ -1,1 +1,1 @@
-from lhub.cli import config
+from . import config
