@@ -23,7 +23,8 @@ class Actions:
         alert = deepcopy(alert)
         # From this: {"displayName": "batch_start_millis", "value": "1632146400000"}
         # To this: {"batch_start_millis": "1632146400000"}
-        alert['additionalFields'] = {x['displayName']: x['value'] for x in alert.get('additionalFields', {}) if x.get('displayName')}
+        # ToDo 2022-03-09, research further and verify since m92: the step below causes a failure now, and it looks like it's because the alert API is returning cleaner results now
+        # alert['additionalFields'] = {x['displayName']: x['value'] for x in alert.get('additionalFields', {}) if x.get('displayName')}
 
         # From this: {"caseFieldId": "field-17", "displayName": "Alert Context", "fieldType": "Text", "value": "mdr_test"}
         # To this: {"Alert Context": "mdr_test"}
@@ -71,8 +72,10 @@ class Actions:
         if not included_standard_fields and not included_additional_fields:
             return alert
 
-        additional_fields = alert.pop('additionalFields', [])
-        additional_fields = [f for f in additional_fields if not included_additional_fields or f.get('displayName') in included_additional_fields]
+        # ToDo 2022-03-09, research further and verify since m92: appears that at least as of m92 the additional_fields field is now a proper dict instead of a list of dicts
+        additional_fields = alert.pop('additionalFields', {})
+        # additional_fields = [f for f in additional_fields if not included_additional_fields or f.get('displayName') in included_additional_fields]
+        additional_fields = {k: v for k, v in additional_fields.items() if not included_additional_fields or k in included_additional_fields}
 
         mapped_fields = alert.pop('mappedAlertFieldValues', [])
         mapped_fields = [f for f in mapped_fields if not included_standard_fields or f.get('displayName') in included_standard_fields]
@@ -330,10 +333,10 @@ class Actions:
     def search_alerts_advanced(self, query: str = None, limit: int = None, fetch_details=None, included_standard_fields=None, included_additional_fields=None):
         simple_format = False
         if fetch_details:
-            if fetch_details not in ['standard', 'simple']:
-                raise ValueError(f'Invalid input for fetch_details: {fetch_details}')
-            elif fetch_details == 'simple':
+            if fetch_details == 'simple':
                 simple_format = True
+            elif fetch_details != 'standard':
+                raise ValueError(f'Invalid input for fetch_details: {fetch_details}')
         query = query.strip() if query and query.strip() else ""
         result = self.__api.alerts_search_advanced(query=query, limit=limit)
         _ = self._result_dict_has_schema(result, "result", action_description="search alerts", raise_errors=True)
