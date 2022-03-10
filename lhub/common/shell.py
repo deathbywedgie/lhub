@@ -13,11 +13,11 @@ def query_yes_no(question, default=None):
     """
     # Borrowed from here: https://stackoverflow.com/questions/3041986/apt-command-line-interface-like-yes-no-input
     valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
-    if default is None:
+    if not default:
         prompt = " [y/n] "
-    elif default == "yes":
+    elif default is True or default.lower() in ("yes", "y"):
         prompt = " [Y/n] "
-    elif default == "no":
+    elif default is False or default.lower() in ("no", "n"):
         prompt = " [y/N] "
     else:
         raise ValueError("invalid default answer: '%s'" % default)
