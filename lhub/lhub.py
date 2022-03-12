@@ -283,6 +283,16 @@ class Actions:
         _ = self._result_dict_has_schema(result, "result", "data", "data", action_description="list notebooks", raise_errors=True)
         return result["result"]["data"]
 
+    @property
+    def playbook_ids(self):
+        response = self.list_playbooks()
+        return {p["id"]["id"]: p["name"] for p in response}
+
+    def list_playbooks(self, limit=None):
+        response = self.__api.list_playbooks(limit=limit)
+        _ = self._result_dict_has_schema(response, "result", "data", "data")
+        return response["result"]["data"]["data"]
+
     def list_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
         result = self.__api.list_streams(search_text=search_text, filters=filters, limit=limit, offset=offset)
         _ = self._result_dict_has_schema(result, "result", "data", "data", raise_errors=True, action_description="list streams")

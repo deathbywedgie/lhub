@@ -642,8 +642,8 @@ class LogicHubAPI:
             self.log.fatal(message)
         return response.json()
 
-    def _get_playbook_ids(self, limit=25):
-        limit = int(limit or 25)
+    def list_playbooks(self, limit=None):
+        limit = int(limit or 99999)
         body = {"filters": [], "offset": 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
         response = self._http_request(
             url=self.url.playbooks_list,
@@ -651,77 +651,7 @@ class LogicHubAPI:
             params={"pageSize": limit},
             body=body
         )
-        playbooks = response.json()["result"]["data"]["data"]
-        return {p["id"]["id"]: p["name"] for p in playbooks}
-
-    def _set_export_path(self, parent_folder, export_type):
-        current_date = time.strftime("%Y-%m-%d")
-        _folder_counter = 0
-        while True:
-            _folder_counter += 1
-            _new_export_folder = os.path.join(parent_folder, f"{self.url.server_name}_{export_type}_{current_date}_{_folder_counter}")
-            if not os.path.exists(_new_export_folder) or not os.listdir(_new_export_folder):
-                parent_folder = _new_export_folder
-                path = Path(parent_folder)
-                path.mkdir(parents=True, exist_ok=True)
-                break
-        return parent_folder
-
-    # ToDo This is too CLI-specific. Move out of API.
-    def _save_export_to_disk(self, response, export_folder, resource_id, resource_name, file_info):
-        try:
-            response.raise_for_status()
-        except requests.exceptions.HTTPError:
-            warning = f"{file_info} - Download FAILED"
-            _response_message = {}
-            if response.text:
-                try:
-                    _response_message = json.loads(response.text)
-                except json.decoder.JSONDecodeError:
-                    pass
-
-            if not _response_message.get("errors"):
-                self.log.error(warning + f': unknown failure (status code {response.status_code})')
-            else:
-                error = _response_message.get("errors")[0]
-                warning += f": {error['errorType']}: {error['message']}"
-                self.log.error(warning)
-                with open(os.path.join(export_folder, "_FAILURES.log"), "a+") as _error_file:
-                    _error_file.write(warning + "\n")
-        else:
-            write_mode = "w"
-            content_b64 = response.json()["result"]["contentB64"]
-            file_type = response.json()["result"]["fileType"]
-            file_name = f"{resource_name}.{file_type}"
-            if file_type == "json":
-                decoded = base64.b64decode(content_b64).decode("utf-8")
-                file_data = json.dumps(json.loads(decoded), indent=4)
-            elif file_type == "zip":
-                write_mode = "wb"
-                file_data = base64.b64decode(content_b64)
-            else:
-                # Should never happen, but just in case...
-                raise exceptions.LhBaseException(f"\nERROR: Unknown file type. You will need to download manually: {resource_name} ({resource_id})")
-
-            with open(os.path.join(export_folder, file_name), write_mode) as _file:
-                _file.write(file_data)
-            self.log.info(f"{file_info} - Saved successfully")
-
-    # ToDo This is too CLI-specific. Move out of API.
-    def export_flows(self, export_folder, limit=None):
-        limit = int(limit if limit and int(limit) and limit >= 1 else 99999)
-        export_folder = self._set_export_path(parent_folder=export_folder, export_type="flows")
-
-        flow_ids = self._get_playbook_ids(limit=limit)
-        flow_ids_list = sorted(list(flow_ids.keys()))
-        for n in range(len(flow_ids_list)):
-            _flow_id = flow_ids_list[n]
-            _flow_name = flow_ids[_flow_id]
-
-            _file_info = f"{n + 1} of {len(flow_ids_list)}: {_flow_id} ({_flow_name})"
-            self.log.info(f"{_file_info} - Downloading...")
-            _response = self._http_request(url=self.url.flow_export.format(_flow_id), test_response=False)
-            self._save_export_to_disk(response=_response, export_folder=export_folder, resource_id=_flow_id, resource_name=_flow_name, file_info=_file_info)
+        return response.json()
 
     def list_baselines(self):
         params = {"libraryView": "all"}
