@@ -128,6 +128,16 @@ class InvalidNotebookIdFormat(LhBaseException, ValueError):
         super().__init__(self.message, *args, **kwargs)
 
 
+class InvalidPlaybookIdFormat(LhBaseException, ValueError):
+    """Invalid format for notebook IDs"""
+    __default_message = 'Invalid format for playbook ID. Expected an ID number (as a string or number) or a string in the form of "flow-<number>". Received: '
+
+    def __init__(self, input_var, message=None, *args, **kwargs):
+        self.input = input_var
+        self.message = message if message else f'{self.__default_message}{self.input}'
+        super().__init__(self.message, *args, **kwargs)
+
+
 class InvalidStreamIdFormat(LhBaseException, ValueError):
     """Invalid format for Stream IDs"""
     __default_message = 'Invalid format for stream ID. Expected an ID number (as a string or number) or a string in the form of "stream-<number>". Received: '
@@ -189,6 +199,7 @@ class Formatting:
     BaseFormatError = BaseFormatError
     InvalidAlertIdFormat = InvalidAlertIdFormat
     InvalidNotebookIdFormat = InvalidNotebookIdFormat
+    InvalidPlaybookIdFormat = InvalidPlaybookIdFormat
     InvalidRuleFormat = InvalidRuleFormat
     InvalidStreamIdFormat = InvalidStreamIdFormat
 

@@ -40,6 +40,14 @@ def format_notebook_ids(notebook_ids):
     return final_notebooks
 
 
+def format_playbook_id(playbook_id):
+    if isinstance(playbook_id, str):
+        if not re.match(r'^(?:flow-)?\d+$', playbook_id):
+            raise exceptions.Formatting.InvalidPlaybookIdFormat(playbook_id)
+        playbook_id = re.sub(r'\D+', '', playbook_id)
+    return int(playbook_id)
+
+
 def format_stream_id(alert_id):
     if isinstance(alert_id, str):
         if not re.match(r'^(?:stream-)?\d+$', alert_id):

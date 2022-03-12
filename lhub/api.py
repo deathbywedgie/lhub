@@ -587,6 +587,10 @@ class LogicHubAPI:
             raise exceptions.UnexpectedOutput("API response does not match the expected schema for adding a scoring rule")
         return results
 
+    def export_playbook(self, playbook_id, test_response=True):
+        response = self._http_request(url=self.url.flow_export.format(playbook_id), test_response=test_response)
+        return response.json()
+
     def execute_command(self, command_payload, limit=25):
         response = self._http_request(
             url=self.url.command_execute,
