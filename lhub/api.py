@@ -677,6 +677,14 @@ class LogicHubAPI:
         self.fields = response.json()
         return response.json()
 
+    def list_ml_models(self):
+        response = self._http_request(
+            method="GET",
+            url=self.url.ml_models,
+            headers={"Content-Type": "application/json"},
+        )
+        return response.json()
+
     def list_modules(self):
         response = self._http_request(
             method="GET",

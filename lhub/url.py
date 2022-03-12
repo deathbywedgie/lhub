@@ -156,6 +156,10 @@ class URLs:
         return f"{self.base}/api/content-exchange/browse/Module"
 
     @property
+    def ml_models(self):
+        return f"{self.base}/api/listMLModels"
+
+    @property
     def notebooks_attach(self):
         return f"{self.base}/api/notebook/attachNotebooksToEntity"
 
