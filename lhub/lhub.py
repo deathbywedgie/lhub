@@ -377,9 +377,11 @@ class Actions:
 class LogicHub:
     verify_ssl = True
 
-    def __init__(self, hostname, api_key=None, username=None, password=None, verify_ssl=True, cache_seconds=None, verify_api_auth=True, logger: Logger=None, **kwargs):
+    def __init__(self, hostname, api_key=None, username=None, password=None, verify_ssl=True, cache_seconds=None, verify_api_auth=True, logger: Logger = None, log_level=None, **kwargs):
         # If the LogicHubAPI class object has not been given a logger by the time this class is instantiated, set one for it
         LogicHubAPI.log = LogicHubAPI.log or logger or Logger()
+        if log_level:
+            LogicHubAPI.log.log_level = log_level
 
         LogicHubAPI.verify_ssl = self.verify_ssl
 
