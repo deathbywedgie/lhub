@@ -3,7 +3,7 @@ import sys
 _LOG_LEVEL_MAP = {"debug": 7, "info": 6, "notice": 5, "warn": 4, "error": 3, "crit": 2, "alert": 1, "fatal": 0}
 
 
-# Placeholder for real logging
+# ToDo Placeholder for real logging: figure out how to do the same w/ the logger package and get rid of this
 class Logger:
     __log_level = "INFO"
     default_log_level = "INFO"
