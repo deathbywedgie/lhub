@@ -156,6 +156,13 @@ class Actions:
     def get_case_prefix(self):
         return self.__api.case_prefix
 
+    # ToDo Token auth not supported as of 2022-03-09 (m92)
+    def get_dashboard_data(self, dashboard_id):
+        result = self.__api.get_dashboard_data(dashboard_id.strip())
+        _ = self._result_dict_has_schema(result, "result", "widgets", raise_errors=True, action_description="get dashboard data")
+        result = result['result']['widgets']
+        return result
+
     def get_notebooks_attached_to_case(self, case_id):
         response = self.__api.case_list_attached_notebooks(case_id)
         _ = self._result_dict_has_schema(response, "result", action_description="get notebooks from case", raise_errors=True)
@@ -223,9 +230,16 @@ class Actions:
             warnings.append("API response does not match the expected schema for listing custom lists")
         return results, warnings
 
+    # ToDo Token auth not supported as of 2022-03-09 (m92)
+    def list_dashboards(self):
+        result = self.__api.list_dashboards()
+        _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="list dashboards")
+        result = result['result']
+        return result
+
     def list_dashboards_with_widgets(self, include_not_imported=True):
         result = self.__api.list_dashboards_with_widgets()
-        _ = self._result_dict_has_schema(result, "result", "objects", raise_errors=True, action_description="list fields")
+        _ = self._result_dict_has_schema(result, "result", "objects", raise_errors=True, action_description="list dashboards with widgets")
         result = result['result']['objects']
         if not include_not_imported:
             result = [r for r in result if r['metadata']["contentRepoStatus"] != "Global"]
