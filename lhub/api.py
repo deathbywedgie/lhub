@@ -302,28 +302,6 @@ class LogicHubAPI:
             self.log.debug("LogicHubAPI class exiting...")
             self.logout()
 
-    def __get_event_types_v1(self, limit):
-        # Not sure when this one stopped working, but it worked somewhere in at least m66 and didn't work any more in m70
-        params = {"limit": limit}
-        response = self._http_request(url=self.url.event_types, params=params)
-        results = response.json()
-        if results.get("result"):
-            results = results["result"]
-        if results.get("data"):
-            results = results["data"]
-        return results
-
-    def __get_event_types_v2(self, limit):
-        params = {"libraryView": "all"}
-        body = {"filters": [], "offset": 0, "pageSize": limit, "sortColumn": "lastUpdated", "sortOrder": "DESC"}
-        response = self._http_request(method="POST", url=self.url.event_types, params=params, body=body)
-        results = response.json()
-        if results.get("result"):
-            results = results["result"]
-        while isinstance(results, dict) and results.get('data') is not None:
-            results = results["data"]
-        return results
-
     # ToDo Revisit and finish this
     # def get_alerts(self, advanced_filter=None, limit=100):
     #     limit = int(limit) if limit is not None else 100_000
@@ -471,12 +449,6 @@ class LogicHubAPI:
     def get_dashboard_data(self, dashboard_id):
         response = self._http_request(url=self.url.dashboard_data.format(dashboard_id))
         return response.json()
-
-    def get_event_types(self, limit=25):
-        limit = int(limit or 25)
-        if self.version < 70:
-            return self.__get_event_types_v1(limit=limit)
-        return self.__get_event_types_v2(limit=limit)
 
     def get_integrations(self):
         response = self._http_request(method="GET", url=self.url.integrations)
@@ -684,6 +656,34 @@ class LogicHubAPI:
     def list_dashboards_with_widgets(self):
         response = self._http_request(url=self.url.dashboards_and_widgets)
         return response.json()
+
+    def __list_event_types_v1(self, limit):
+        # Not sure when this one stopped working, but it worked somewhere in at least m66 and didn't work any more in m70
+        params = {"limit": limit}
+        response = self._http_request(url=self.url.event_types, params=params)
+        results = response.json()
+        if results.get("result"):
+            results = results["result"]
+        if results.get("data"):
+            results = results["data"]
+        return results
+
+    def __list_event_types_v2(self, limit):
+        params = {"libraryView": "all"}
+        body = {"filters": [], "offset": 0, "pageSize": limit, "sortColumn": "lastUpdated", "sortOrder": "DESC"}
+        response = self._http_request(method="POST", url=self.url.event_types, params=params, body=body)
+        results = response.json()
+        if results.get("result"):
+            results = results["result"]
+        while isinstance(results, dict) and results.get('data') is not None:
+            results = results["data"]
+        return results
+
+    def list_event_types(self, limit=25):
+        limit = int(limit or 25)
+        if self.version < 70:
+            return self.__list_event_types_v1(limit=limit)
+        return self.__list_event_types_v2(limit=limit)
 
     def list_fields(self, params: dict = None, **kwargs):
         params = params or {"systemFields": "true", "pageSize": 9999, "after": 0}
