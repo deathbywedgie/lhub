@@ -1,14 +1,13 @@
 import sys
 
 _LOG_LEVEL_MAP = {"debug": 7, "info": 6, "notice": 5, "warn": 4, "error": 3, "crit": 2, "alert": 1, "fatal": 0}
+LOG_LEVELS = _LOG_LEVEL_MAP.keys()
 
 
 # ToDo Placeholder for real logging: figure out how to do the same w/ the logger package and get rid of this
 class Logger:
     __log_level = "INFO"
     default_log_level = "INFO"
-
-    _LOG_LEVELS = _LOG_LEVEL_MAP.keys()
 
     def __init__(self, session_prefix=None, log_level=None):
         self.log_level = log_level if log_level else self.default_log_level
@@ -20,13 +19,13 @@ class Logger:
 
     @property
     def log_level(self):
-        if self.__log_level.lower() not in self._LOG_LEVELS:
+        if self.__log_level.lower() not in LOG_LEVELS:
             raise ValueError(f"Invalid log level: {self.__log_level}")
         return self.__log_level
 
     @log_level.setter
     def log_level(self, val: str):
-        if val.lower() not in self._LOG_LEVELS:
+        if val.lower() not in LOG_LEVELS:
             raise ValueError(f"Invalid log level: {val}")
         self.__log_level = val.upper()
 
