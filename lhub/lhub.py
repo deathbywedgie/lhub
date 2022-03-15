@@ -222,7 +222,7 @@ class Actions:
         return result
 
     def list_custom_lists(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = None):
-        results = self.__api.get_custom_lists(search_text=search_text, filters=filters, limit=limit, offset=offset, verify_results=False)
+        results = self.__api.list_custom_lists(search_text=search_text, filters=filters, limit=limit, offset=offset, verify_results=False)
         warnings = []
         try:
             results = results["result"]["data"]
@@ -261,7 +261,7 @@ class Actions:
         assert filter_type in ["equals", "contains"], f"Invalid filter type \"{filter_type}\""
         assert isinstance(name_filter, str), "name_filter must be a string and cannot be None"
 
-        _response = self.__api.get_integrations()
+        _response = self.__api.list_integrations()
 
         # _query = _response.pop("query")
         _result = _response.pop("result")

@@ -409,10 +409,6 @@ class LogicHubAPI:
         response = self._http_request(url=self.url.dashboard_data.format(dashboard_id))
         return response.json()
 
-    def get_integrations(self):
-        response = self._http_request(method="GET", url=self.url.integrations)
-        return response.json()
-
     def get_rule_set_by_name(self, name):
         rule_sets = self.get_rule_sets()
         rule_set = [x for x in rule_sets if x['name'] == name]
@@ -689,6 +685,10 @@ class LogicHubAPI:
         params = params or {"systemFields": "true", "pageSize": 9999, "after": 0}
         response = self._http_request(method="GET", url=self.url.fields, params=params, **kwargs)
         self.fields = response.json()
+        return response.json()
+
+    def list_integrations(self):
+        response = self._http_request(method="GET", url=self.url.integrations)
         return response.json()
 
     def list_ml_models(self):
