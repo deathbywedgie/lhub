@@ -193,7 +193,7 @@ class Actions:
         result = result["result"]["data"]
         baselines = result['data']
         stream_ids = [int(b['id']['id']) for b in baselines]
-        stream_state_response = self.__api.get_stream_states(stream_ids=stream_ids)
+        stream_state_response = self.__api.list_stream_states(stream_ids=stream_ids)
         _ = self._result_dict_has_schema(stream_state_response, "result", "streams", raise_errors=True, action_description="fetch stream states")
         state_map = {_stream['streamId']: _stream['status'] for _stream in stream_state_response['result']['streams']}
         for n in range(len(baselines)):
@@ -323,7 +323,7 @@ class Actions:
         return result["result"]
 
     def list_workflows(self):
-        result = self.__api.get_workflows()
+        result = self.__api.list_workflows()
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list workflows", raise_errors=True)
         return result["result"]["data"]
 

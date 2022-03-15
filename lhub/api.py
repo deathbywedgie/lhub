@@ -450,14 +450,6 @@ class LogicHubAPI:
                 raise exceptions.StreamNotFound(stream_id)
         return response.json()
 
-    def get_stream_states(self, stream_ids: list):
-        new_stream_id_list = []
-        for s in stream_ids:
-            new_stream_id_list.append(f'stream-{s}')
-        body = {"streams": new_stream_id_list}
-        response = self._http_request(method="POST", url=self.url.stream_states, body=body)
-        return response.json()
-
     def get_version_info(self):
         self.log.debug("Fetching LogicHub version")
         try:
@@ -477,10 +469,6 @@ class LogicHubAPI:
     def get_workflow_by_id(self, workflow_id: int):
         assert isinstance(workflow_id, int), "Workflow ID must be an integer"
         response = self._http_request(method="GET", url=self.url.case_status_workflow_by_id.format(workflow_id))
-        return response.json()
-
-    def get_workflows(self):
-        response = self._http_request(method="GET", url=self.url.case_status_list_workflows)
         return response.json()
 
     # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
@@ -731,6 +719,14 @@ class LogicHubAPI:
             raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing rule sets")
         return results
 
+    def list_stream_states(self, stream_ids: list):
+        new_stream_id_list = []
+        for s in stream_ids:
+            new_stream_id_list.append(f'stream-{s}')
+        body = {"streams": new_stream_id_list}
+        response = self._http_request(method="POST", url=self.url.stream_states, body=body)
+        return response.json()
+
     def list_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
         params = {"libraryView": "all"}
         headers = {"Content-Type": "application/json"}
@@ -748,6 +744,10 @@ class LogicHubAPI:
         }
 
         response = self._http_request(method="POST", url=self.url.streams, body=body_dict, headers=headers, params=params)
+        return response.json()
+
+    def list_workflows(self):
+        response = self._http_request(method="GET", url=self.url.case_status_list_workflows)
         return response.json()
 
     def reprocess_batch(self, batch_id):
