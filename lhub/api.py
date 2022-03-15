@@ -409,29 +409,15 @@ class LogicHubAPI:
         response = self._http_request(url=self.url.dashboard_data.format(dashboard_id))
         return response.json()
 
+    # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
     def get_rule_set_by_name(self, name):
-        rule_sets = self.get_rule_sets()
+        rule_sets = self.list_rule_sets()
         rule_set = [x for x in rule_sets if x['name'] == name]
         if not rule_set:
             raise exceptions.RuleSetNotFound(f"No rule set found matching name: {name}")
         rule_set = rule_set[0]
         rule_set['rules'] = self.get_rules_for_rule_set(rule_set['id'])
         return rule_set
-
-    # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
-    def get_rule_sets(self, limit=25):
-        limit = int(limit or 25)
-        params = {
-            "fields": "name,isPublic",
-            "pageSize": limit,
-        }
-        response = self._http_request(url=self.url.rule_sets, params=params)
-        results = response.json()
-        try:
-            results = results["result"]["data"]
-        except Exception:
-            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing rule sets")
-        return results
 
     # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
     def get_rules_for_rule_set(self, rule_set):
@@ -578,17 +564,6 @@ class LogicHubAPI:
             self.log.fatal(message)
         return response.json()
 
-    def list_playbooks(self, limit=None):
-        limit = int(limit or 99999)
-        body = {"filters": [], "offset": 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
-        response = self._http_request(
-            url=self.url.playbooks_list,
-            method="POST",
-            params={"pageSize": limit},
-            body=body
-        )
-        return response.json()
-
     def list_baselines(self):
         params = {"libraryView": "all"}
         body = {"filters": [], "offset": 0, "pageSize": 9999, "sortColumn": "lastUpdated", "sortOrder": "DESC"}
@@ -729,6 +704,32 @@ class LogicHubAPI:
         # Sort the results by notebook ID
         self.notebooks = response["result"]["data"]["data"] = helpers.sort_notebook_objects_by_id(response["result"]["data"]["data"])
         return response
+
+    def list_playbooks(self, limit=None):
+        limit = int(limit or 99999)
+        body = {"filters": [], "offset": 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
+        response = self._http_request(
+            url=self.url.playbooks_list,
+            method="POST",
+            params={"pageSize": limit},
+            body=body
+        )
+        return response.json()
+
+    # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
+    def list_rule_sets(self, limit=25):
+        limit = int(limit or 25)
+        params = {
+            "fields": "name,isPublic",
+            "pageSize": limit,
+        }
+        response = self._http_request(url=self.url.rule_sets, params=params)
+        results = response.json()
+        try:
+            results = results["result"]["data"]
+        except Exception:
+            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing rule sets")
+        return results
 
     def list_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
         params = {"libraryView": "all"}
