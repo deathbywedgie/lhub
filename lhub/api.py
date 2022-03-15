@@ -404,47 +404,6 @@ class LogicHubAPI:
             raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
         return results
 
-    def get_custom_lists(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = None, verify_results=True):
-        """
-
-        :param search_text: Optional: Part or all of the custom list name to filter by
-        :param filters: Optional: Advanced search, e.g. [{"searchText":"<case name>"}]
-        :param limit: Optional: Limit the number of results
-        :param offset: Optional: if using pagination, provide the entry number to fetch (default is 0)
-        :param verify_results: Optional: set to false to return response JSON without verifying that the format is as expected
-        :return:
-        """
-        if limit:
-            assert isinstance(limit, int) or int(limit)
-        if offset:
-            assert isinstance(offset, int) or int(offset)
-        limit = int(limit or 10_000)
-        offset = int(offset or 0)
-        filters = filters or []
-        if search_text:
-            filters.append({"searchText": search_text})
-
-        response = self._http_request(
-            method="POST",
-            url=self.url.custom_lists,
-            params={"libraryView": "all"},
-            body={
-                "filters": filters,
-                "offset": offset,
-                "pageSize": limit,
-                "sortColumn": "name",
-                "sortOrder": "ASC"
-            },
-            headers={'Content-Type': 'application/json'},
-        )
-        results = response.json()
-        if verify_results:
-            try:
-                _ = results["result"]["data"]
-            except Exception:
-                raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
-        return results
-
     # ToDo Token auth not supported as of 2022-03-09 (m92)
     def get_dashboard_data(self, dashboard_id):
         response = self._http_request(url=self.url.dashboard_data.format(dashboard_id))
@@ -647,6 +606,47 @@ class LogicHubAPI:
         body = {"filters": filters or [], "offset": offset, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
         response = self._http_request(method="POST", url=self.url.connections, headers=headers, params=params, body=body)
         return response.json()
+
+    def list_custom_lists(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = None, verify_results=True):
+        """
+
+        :param search_text: Optional: Part or all of the custom list name to filter by
+        :param filters: Optional: Advanced search, e.g. [{"searchText":"<case name>"}]
+        :param limit: Optional: Limit the number of results
+        :param offset: Optional: if using pagination, provide the entry number to fetch (default is 0)
+        :param verify_results: Optional: set to false to return response JSON without verifying that the format is as expected
+        :return:
+        """
+        if limit:
+            assert isinstance(limit, int) or int(limit)
+        if offset:
+            assert isinstance(offset, int) or int(offset)
+        limit = int(limit or 10_000)
+        offset = int(offset or 0)
+        filters = filters or []
+        if search_text:
+            filters.append({"searchText": search_text})
+
+        response = self._http_request(
+            method="POST",
+            url=self.url.custom_lists,
+            params={"libraryView": "all"},
+            body={
+                "filters": filters,
+                "offset": offset,
+                "pageSize": limit,
+                "sortColumn": "name",
+                "sortOrder": "ASC"
+            },
+            headers={'Content-Type': 'application/json'},
+        )
+        results = response.json()
+        if verify_results:
+            try:
+                _ = results["result"]["data"]
+            except Exception:
+                raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
+        return results
 
     # ToDo Token auth not supported as of 2022-03-09 (m92)
     def list_dashboards(self):
