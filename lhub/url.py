@@ -92,19 +92,19 @@ class URLs:
     def custom_lists(self):
         return f"{self.base}/api/content-management/content/customList"
 
-    # ToDo Token auth not supported as of 2022-03-09
+    # ToDo Token auth not supported as of 2022-03-09 (m92)
     @property
     def dashboard_config(self):
         """Get the config for a single dashboard"""
         return f"{self.base}/api/dashboards/v2/{{}}"
 
-    # ToDo Token auth not supported as of 2022-03-09
+    # ToDo Token auth not supported as of 2022-03-09 (m92)
     @property
     def dashboard_data(self):
         """Get widget data from a single dashboard's current state"""
         return f"{self.base}/api/dashboards/v2/{{}}/data"
 
-    # ToDo Token auth not supported as of 2022-03-09
+    # ToDo Token auth not supported as of 2022-03-09 (m92)
     @property
     def dashboards(self):
         """List all dashboards"""
@@ -112,7 +112,11 @@ class URLs:
 
     @property
     def dashboards_and_widgets(self):
-        """List all dashboards via Content Exchange, including widget definitions. Includes dashboards not yet imported from Content Exchange."""
+        """
+        List all dashboards via Content Exchange, including widget definitions. Includes dashboards not yet imported from Content Exchange.
+        IDs are not correct if being used to fetch dashboard data: shows ID with spaces like the name, but real IDs have underscores.
+        :return:
+        """
         return f"{self.base}/api/content-exchange/browse/Dashboard"
 
     @property
