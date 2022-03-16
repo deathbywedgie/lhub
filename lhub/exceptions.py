@@ -17,7 +17,10 @@ class LhBaseException(BaseException):
 class AuthFailure(LhBaseException, HTTPError):
     """Authentication Failed"""
 
-    def __init__(self, *args, **kwargs):
+    __default_message = 'Authentication or authorization failure'
+
+    def __init__(self, message=None, *args, **kwargs):
+        self.message = message if message else self.__default_message
         super().__init__(*args, **kwargs)
 
 
@@ -46,14 +49,20 @@ class APIAuthFailure(AuthFailure):
 class PasswordAuthFailure(AuthFailure):
     """Authentication Failed"""
 
-    def __init__(self, *args, **kwargs):
+    __default_message = 'Authentication or authorization failure'
+
+    def __init__(self, message=None, *args, **kwargs):
+        self.message = message if message else self.__default_message
         super().__init__(*args, **kwargs)
 
 
 class UnexpectedOutput(LhBaseException, HTTPError):
     """Authentication Failed"""
 
-    def __init__(self, *args, **kwargs):
+    __default_message = 'Unexpected output returned'
+
+    def __init__(self, message=None, *args, **kwargs):
+        self.message = message if message else self.__default_message
         super().__init__(*args, **kwargs)
 
 
@@ -183,6 +192,7 @@ class VersionMinimumNotMet(BaseValidationError, ValueError):
 
     def __init__(self, min_version, feature_label, *args, **kwargs):
         self.message = self.__default_message.format(feature_label, min_version)
+        self.id = feature_label
         super().__init__(self.message, *args, **kwargs)
 
 
