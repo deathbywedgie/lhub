@@ -58,6 +58,7 @@ class LogicHubAPI:
             self.log = Logger()
         if default_timeout:
             self.http_timeout_default = int(default_timeout)
+        self._http_timeout_login = min(self._http_timeout_login, self.http_timeout_default)
         self.kwargs = kwargs
 
         if isinstance(verify_ssl, bool):
