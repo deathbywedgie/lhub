@@ -42,7 +42,7 @@ class LogicHubAPI:
     __credentials = {}
     __session_cookie = None
 
-    def __init__(self, hostname, api_key=None, username=None, password=None, verify_ssl=True, cache_seconds=None, **kwargs):
+    def __init__(self, hostname, api_key=None, username=None, password=None, verify_ssl=True, cache_seconds=None, default_timeout=None, **kwargs):
         # First store key variables and then determine whether they are valid
         self.__api_key = api_key.strip() if api_key else None
         self.__username = username.strip() if username else None
@@ -56,6 +56,8 @@ class LogicHubAPI:
 
         if not self.log:
             self.log = Logger()
+        if default_timeout:
+            self.http_timeout_default = int(default_timeout)
         self.kwargs = kwargs
 
         if isinstance(verify_ssl, bool):
@@ -432,7 +434,7 @@ class LogicHubAPI:
 
     def get_stream_by_id(self, stream_id: int):
         headers = {"Accept": "application/json"}
-        # ToDo Revisit this. I better approach might be:
+        # ToDo Revisit this. A better approach might be:
         # try:
         #     response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers)
         #     return response.json()
