@@ -327,17 +327,32 @@ class LogicHubAPI:
     #     return response.json()
 
     def get_batch_results_by_id(self, batch_id: int, limit=1000, offset=0):
+        """
+
+        :param batch_id:
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
+        :return:
+        """
         limit = int(limit or 1000)
         offset = int(offset or 0)
         params = {"fields": "*", "pageSize": limit, "after": offset, "cachedOnly": "true"}
         response = self._http_request(url=self.url.batch_results_by_id.format(int(batch_id)), params=params)
         return response.json()
 
-    def get_batches_by_stream_id(self, stream_id, limit=25, offset=0, statuses=None, exclude_empty_results=False):
-        if limit == -1:
-            limit = 999999999
+    def get_batches_by_stream_id(self, stream_id, limit=None, offset=0, statuses=None, exclude_empty_results=False):
+        """
+
+        :param stream_id:
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
+        :param statuses:
+        :param exclude_empty_results:
+        :return:
+        """
+        limit = int(limit if limit and limit > 0 else 999999999)
         params = {
-            "pageSize": int(limit or 25),
+            "pageSize": limit,
             "after": int(offset or 0),
         }
         body = {"status": statuses or [], "excludeBatchesWithZeroEvents": exclude_empty_results}
@@ -497,13 +512,20 @@ class LogicHubAPI:
         response = self._http_request(url=self.url.flow_export.format(playbook_id), test_response=test_response)
         return response.json()
 
-    def execute_command(self, command_payload, limit=25):
+    def execute_command(self, command_payload, limit=None):
+        """
+
+        :param command_payload:
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :return:
+        """
+        limit = int(limit if limit and limit > 0 else 999999999)
         response = self._http_request(
             url=self.url.command_execute,
             method="POST",
             body=command_payload,
             test_response=False,
-            params={"pageSize": int(limit or 25)}
+            params={"pageSize": limit}
         )
         try:
             result_dict = response.json()
@@ -552,13 +574,29 @@ class LogicHubAPI:
             self.log.fatal(message)
         return response.json()
 
-    def list_baselines(self):
+    def list_baselines(self, limit=None, offset=0):
+        """
+        List all Baselines
+
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
+        :return:
+        """
+        limit = int(limit if limit and limit > 0 else 999999999)
         params = {"libraryView": "all"}
-        body = {"filters": [], "offset": 0, "pageSize": 9999, "sortColumn": "lastUpdated", "sortOrder": "DESC"}
+        body = {"filters": [], "offset": offset or 0, "pageSize": limit, "sortColumn": "lastUpdated", "sortOrder": "DESC"}
         response = self._http_request(method="POST", url=self.url.baselines, params=params, body=body)
         return response.json()
 
-    def list_connections(self, limit=None, filters=None, offset=0):
+    def list_connections(self, filters=None, limit=None, offset=0):
+        """
+        List all connections
+
+        :param filters: Optional: Advanced search
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
+        :return:
+        """
         limit = int(limit if limit and int(limit) and limit >= 1 else 99999)
         params = {"libraryView": "all"}
         headers = {"Content-Type": "application/json"}
@@ -571,16 +609,12 @@ class LogicHubAPI:
 
         :param search_text: Optional: Part or all of the custom list name to filter by
         :param filters: Optional: Advanced search, e.g. [{"searchText":"<case name>"}]
-        :param limit: Optional: Limit the number of results
-        :param offset: Optional: if using pagination, provide the entry number to fetch (default is 0)
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
         :param verify_results: Optional: set to false to return response JSON without verifying that the format is as expected
         :return:
         """
-        if limit:
-            assert isinstance(limit, int) or int(limit)
-        if offset:
-            assert isinstance(offset, int) or int(offset)
-        limit = int(limit or 10_000)
+        limit = int(limit if limit and limit > 0 else 999999999)
         offset = int(offset or 0)
         filters = filters or []
         if search_text:
@@ -616,8 +650,14 @@ class LogicHubAPI:
         response = self._http_request(url=self.url.dashboards_and_widgets)
         return response.json()
 
-    def __list_event_types_v1(self, limit):
+    def __list_event_types_v1(self, limit=None):
+        """
+
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :return:
+        """
         # Not sure when this one stopped working, but it worked somewhere in at least m66 and didn't work any more in m70
+        limit = int(limit if limit and limit > 0 else 999999999)
         params = {"limit": limit}
         response = self._http_request(url=self.url.event_types, params=params)
         results = response.json()
@@ -627,9 +667,17 @@ class LogicHubAPI:
             results = results["data"]
         return results
 
-    def __list_event_types_v2(self, limit):
+    def __list_event_types_v2(self, limit=None, offset=0):
+        """
+
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
+        :return:
+        """
+        limit = int(limit if limit and limit > 0 else 999999999)
         params = {"libraryView": "all"}
-        body = {"filters": [], "offset": 0, "pageSize": limit, "sortColumn": "lastUpdated", "sortOrder": "DESC"}
+        # Confirm the right term for "name" as the sort column and change this sort order
+        body = {"filters": [], "pageSize": limit, "offset": offset or 0, "sortColumn": "lastUpdated", "sortOrder": "DESC"}
         response = self._http_request(method="POST", url=self.url.event_types, params=params, body=body)
         results = response.json()
         if results.get("result"):
@@ -638,8 +686,13 @@ class LogicHubAPI:
             results = results["data"]
         return results
 
-    def list_event_types(self, limit=25):
-        limit = int(limit or 25)
+    def list_event_types(self, limit=None):
+        """
+
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :return:
+        """
+        limit = int(limit if limit and limit > 0 else 999999999)
         if self.version < 70:
             return self.__list_event_types_v1(limit=limit)
         return self.__list_event_types_v2(limit=limit)
@@ -670,11 +723,19 @@ class LogicHubAPI:
         )
         return response.json()
 
-    def list_notebooks(self, limit=None, search_string=None):
+    def list_notebooks(self, limit=None, offset=0, search_string=None):
+        """
+        List all Notebooks
+
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
+        :param search_string:
+        :return:
+        """
         limit = limit if limit and isinstance(limit, int) else 99999
         body = {
             "filters": [],
-            "offset": 0,
+            "offset": offset or 0,
             "pageSize": limit,
             "sortColumn": "name",
             "sortOrder": "ASC",
@@ -693,9 +754,16 @@ class LogicHubAPI:
         self.notebooks = response["result"]["data"]["data"] = helpers.sort_notebook_objects_by_id(response["result"]["data"]["data"])
         return response
 
-    def list_playbooks(self, limit=None):
-        limit = int(limit or 99999)
-        body = {"filters": [], "offset": 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
+    def list_playbooks(self, limit=None, offset=0):
+        """
+        List all Playbooks
+
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
+        :return:
+        """
+        limit = int(limit if limit and limit > 0 else 999999999)
+        body = {"filters": [], "offset": offset or 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
         response = self._http_request(
             url=self.url.playbooks_list,
             method="POST",
@@ -705,8 +773,13 @@ class LogicHubAPI:
         return response.json()
 
     # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
-    def list_rule_sets(self, limit=25):
-        limit = int(limit or 25)
+    def list_rule_sets(self, limit=None):
+        """
+
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :return:
+        """
+        limit = int(limit if limit and limit > 0 else 999999999)
         params = {
             "fields": "name,isPublic",
             "pageSize": limit,
@@ -727,7 +800,17 @@ class LogicHubAPI:
         response = self._http_request(method="POST", url=self.url.stream_states, body=body)
         return response.json()
 
-    def list_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
+    def list_streams(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = 0):
+        """
+        List all streams
+
+        :param search_text:
+        :param filters:
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
+        :return:
+        """
+        limit = int(limit if limit and limit > 0 else 999999999)
         params = {"libraryView": "all"}
         headers = {"Content-Type": "application/json"}
 
@@ -737,7 +820,7 @@ class LogicHubAPI:
 
         body_dict = {
             "filters": filters,
-            "offset": offset,
+            "offset": offset or 0,
             "pageSize": limit,
             "sortColumn": "name",
             "sortOrder": "ASC"
