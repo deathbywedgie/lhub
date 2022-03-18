@@ -105,7 +105,7 @@ class Actions:
             _dict = _dict[field]
         return True
 
-    def execute_command(self, command_name, input_dict, reformat=True, result_limit=25):
+    def execute_command(self, command_name, input_dict, reformat=True, result_limit=None):
         response = self.__api.execute_command({"command": command_name, "parameterValues": input_dict, "limit": result_limit})
         if not reformat:
             return response
@@ -307,7 +307,7 @@ class Actions:
         _ = self._result_dict_has_schema(response, "result", "data", "data")
         return response["result"]["data"]["data"]
 
-    def list_streams(self, search_text: str = None, filters: list = None, limit: int = 25, offset: int = 0):
+    def list_streams(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = 0):
         result = self.__api.list_streams(search_text=search_text, filters=filters, limit=limit, offset=offset)
         _ = self._result_dict_has_schema(result, "result", "data", "data", raise_errors=True, action_description="list streams")
         return result["result"]["data"]["data"]
