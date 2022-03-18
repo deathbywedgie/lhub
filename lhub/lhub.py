@@ -202,8 +202,8 @@ class Actions:
             baselines[n]['baseline_config_status'] = state_map.get(f"stream-{b['id']['id']}")
         return result
 
-    def list_connections(self, add_status=False):
-        result = self.__api.list_connections()
+    def list_connections(self, filters=None, add_status=False):
+        result = self.__api.list_connections(filters=filters)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list connections", raise_errors=True)
         result = result["result"]["data"]
         if not add_status:
