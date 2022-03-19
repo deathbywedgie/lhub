@@ -61,13 +61,3 @@ class Logger:
 
     def fatal(self, msg):
         self.__print("fatal", msg)
-
-    @staticmethod
-    def print(msg):
-        """
-        Explicit print option so this can be further controlled later if needed
-
-        :param msg:
-        :return:
-        """
-        print(msg)
