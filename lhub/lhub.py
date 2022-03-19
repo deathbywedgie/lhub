@@ -260,12 +260,11 @@ class Actions:
         filter_type = filter_type.lower()
         assert filter_type in ["equals", "contains"], f"Invalid filter type \"{filter_type}\""
 
-        _response = self.__api.list_integrations()
-
-        # _query = _response.pop("query")
-        _result = _response.pop("result")
-        categories = _result["categories"]
-        results = _result["objects"]
+        response = self.__api.list_integrations()
+        _ = self._result_dict_has_schema(response, "result", "objects")
+        result = response.pop("result")
+        categories = result["categories"]
+        results = result["objects"]
 
         if name_filter:
             if filter_type == "contains":
