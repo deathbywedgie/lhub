@@ -300,10 +300,16 @@ class Actions:
         response = self.list_playbooks()
         return {p["id"]["id"]: p["name"] for p in response}
 
-    def list_playbooks(self, limit=None):
+    def list_playbooks(self, limit=None, map_mode=None):
+        assert not map_mode or map_mode in ['id', 'name'], f'Invalid output format: {map_mode}'
         response = self.__api.list_playbooks(limit=limit)
         _ = self._result_dict_has_schema(response, "result", "data", "data")
-        return response["result"]["data"]["data"]
+        output = response["result"]["data"]["data"]
+        if map_mode == "id":
+            output = {f['id']['id']: {k: v for k, v in f.items() if k != 'id'} for f in output}
+        elif map_mode == "name":
+            output = {f['name']: {k: v for k, v in f.items() if k != 'name'} for f in output}
+        return output
 
     def list_streams(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = 0):
         result = self.__api.list_streams(search_text=search_text, filters=filters, limit=limit, offset=offset)
