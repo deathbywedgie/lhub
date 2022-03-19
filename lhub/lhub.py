@@ -259,7 +259,6 @@ class Actions:
     def list_integrations(self, name_filter: str = None, filter_type="contains"):
         filter_type = filter_type.lower()
         assert filter_type in ["equals", "contains"], f"Invalid filter type \"{filter_type}\""
-        # assert isinstance(name_filter, str), "name_filter must be a string and cannot be None"
 
         _response = self.__api.list_integrations()
 
