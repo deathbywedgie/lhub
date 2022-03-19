@@ -247,9 +247,9 @@ class Actions:
 
     def list_fields(self, map_mode=None):
         assert not map_mode or map_mode in ['id', 'name'], f'Invalid output format: {map_mode}'
-        result = self.__api.fields
-        _ = self._result_dict_has_schema(result, "result", "data", raise_errors=True, action_description="list fields")
-        output = result["result"]["data"]
+        response = self.__api.fields
+        _ = self._result_dict_has_schema(response, "result", "data", raise_errors=True, action_description="list fields")
+        output = response["result"]["data"]
         if map_mode == "id":
             output = {f['id']: {k: v for k, v in f.items() if k != 'id'} for f in output}
         elif map_mode == "name":
