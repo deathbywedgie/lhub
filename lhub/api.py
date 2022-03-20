@@ -429,7 +429,7 @@ class LogicHubAPI:
         rule_sets = self.list_rule_sets()
         rule_set = [x for x in rule_sets if x['name'] == name]
         if not rule_set:
-            raise exceptions.RuleSetNotFound(f"No rule set found matching name: {name}")
+            raise exceptions.RuleSetNotFound(input_var=name)
         rule_set = rule_set[0]
         rule_set['rules'] = self.get_rules_for_rule_set(rule_set['id'])
         return rule_set
