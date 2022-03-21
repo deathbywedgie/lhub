@@ -3,7 +3,8 @@ import json
 import re
 from collections import namedtuple
 
-import requests
+from requests import request
+from requests.exceptions import HTTPError
 from urllib3 import disable_warnings
 from urllib3.exceptions import InsecureRequestWarning
 import sys
@@ -245,7 +246,7 @@ class LogicHubAPI:
             json_body = {}
 
         kwargs = {k: v for k, v in {**{"params": params, "data": body, "json": json_body, "headers": headers}, **(kwargs or {})}.items() if v}
-        response = requests.request(method=method, url=url, verify=self.verify_ssl, timeout=timeout, cookies=self.cookies, **kwargs)
+        response = request(method=method, url=url, verify=self.verify_ssl, timeout=timeout, cookies=self.cookies, **kwargs)
 
         # Only use reauth/automatic login if password auth is used
         if self.auth_type == 'password':
@@ -253,7 +254,7 @@ class LogicHubAPI:
             if response.status_code == 401 and reauth and "not logged in" in response.text:
                 self.log.debug(f"Session expired; logging in and retrying")
                 self.login(force_new_session=True)
-                response = requests.request(method=method, url=url, verify=self.verify_ssl, timeout=timeout, cookies=self.cookies, **kwargs)
+                response = request(method=method, url=url, verify=self.verify_ssl, timeout=timeout, cookies=self.cookies, **kwargs)
 
         # Store last response before testing whether the call was successful
         self.last_response_status = response.status_code
@@ -288,7 +289,7 @@ class LogicHubAPI:
         _response = self._http_request(url=self.url.logout, method="POST", test_response=False, reauth=False, timeout=self._http_timeout_login)
         try:
             _response.raise_for_status()
-        except requests.exceptions.HTTPError as err:
+        except HTTPError as err:
             self.log.warn(f"Logout failed with HTTP error: {str(err)}")
         except Exception as err:
             self.log.warn(f"Logout failed with UNKNOWN error: {repr(err)}")
@@ -454,13 +455,13 @@ class LogicHubAPI:
         # try:
         #     response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers)
         #     return response.json()
-        # except requests.exceptions.HTTPError:
+        # except HTTPError:
         #     if self.last_response_status == 400 and 'Cannot find entity for id StreamId' in self.last_response_text:
         #         raise exceptions.app.StreamNotFound(stream_id)
         response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers, test_response=False)
         try:
             response.raise_for_status()
-        except requests.exceptions.HTTPError:
+        except HTTPError:
             if response.status_code == 400 and 'Cannot find entity for id StreamId' in response.text:
                 raise exceptions.app.StreamNotFound(stream_id)
         return response.json()
@@ -565,7 +566,7 @@ class LogicHubAPI:
 
         try:
             response.raise_for_status()
-        except requests.exceptions.HTTPError:
+        except HTTPError:
             message = f"Request failed with status code {response.status_code}\n\nText:\n\n"
             try:
                 message += json.dumps(response.json(), indent=2)
