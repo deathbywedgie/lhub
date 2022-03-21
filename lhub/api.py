@@ -130,7 +130,7 @@ class LogicHubAPI:
         for f in self.fields:
             if f.get('fieldName') == 'lh_linked_alerts':
                 return f
-        raise exceptions.Validation.VersionMinimumNotMet(min_version='m86', feature_label='linked alerts')
+        raise exceptions.validation.VersionMinimumNotMet(min_version='m86', feature_label='linked alerts')
 
     @property
     def version(self):
@@ -172,7 +172,7 @@ class LogicHubAPI:
     def session_cookie(self):
         # ToDo Replace this later, but for now include this until I'm sure the update is all ready
         if self.__api_key:
-            raise Exception('Session cookie should not be invoked')
+            raise exceptions.LhBaseException('Session cookie should not be invoked')
         if not self.__session_cookie:
             self.login()
         return self.__session_cookie
@@ -191,29 +191,29 @@ class LogicHubAPI:
         # Group all tests for status code 401
         if response_obj.status_code == 401:
             if self.auth_type == 'password':
-                raise exceptions.Auth.PasswordAuthFailure
+                raise exceptions.auth.PasswordAuthFailure
             else:
                 if 'Unauthorized for URL' in response_obj.text or 'token is not allowed with this endpoint' in response_obj.text:
-                    raise exceptions.Auth.APIAuthNotAuthorized(url)
+                    raise exceptions.auth.APIAuthNotAuthorized(url)
                 else:
-                    raise exceptions.Auth.APIAuthFailure(url)
+                    raise exceptions.auth.APIAuthFailure(url)
 
         # Group all tests for status code 400
         elif response_obj.status_code == 400:
             if self.auth_type == 'password':
                 if url == self.url.login and 'Username/Password not valid' in self.last_response_text:
-                    raise exceptions.Auth.PasswordAuthFailure
+                    raise exceptions.auth.PasswordAuthFailure
             if 'batch' in url and re.search(r'controllers.BatchController.legacyPost.*?For input string', response_obj.text):
                 _id = re.search(r'POST /demo/batch-(\d+)', response_obj.text)
                 _id = _id.groups()[0] if _id else None
-                raise exceptions.BatchNotFound(_id)
+                raise exceptions.app.BatchNotFound(_id)
 
         # Group all tests for status code 500
         elif response_obj.status_code == 500:
             if 'Unable to find batch with id' in response_obj.text:
                 _id = re.search(r'Unable to find batch with id batch-(\d+)', response_obj.text)
                 _id = _id.groups()[0] if _id else None
-                raise exceptions.BatchNotFound(_id)
+                raise exceptions.app.BatchNotFound(_id)
 
         response_obj.raise_for_status()
 
@@ -416,7 +416,7 @@ class LogicHubAPI:
         try:
             results = results["result"]
         except Exception:
-            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
+            raise exceptions.app.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
         return results
 
     # ToDo Token auth not supported as of 2022-03-09 (m92)
@@ -429,7 +429,7 @@ class LogicHubAPI:
         rule_sets = self.list_rule_sets()
         rule_set = [x for x in rule_sets if x['name'] == name]
         if not rule_set:
-            raise exceptions.RuleSetNotFound(input_var=name)
+            raise exceptions.app.RuleSetNotFound(input_var=name)
         rule_set = rule_set[0]
         rule_set['rules'] = self.get_rules_for_rule_set(rule_set['id'])
         return rule_set
@@ -445,7 +445,7 @@ class LogicHubAPI:
         try:
             results = results["result"]["rules"]["data"]
         except Exception:
-            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing rules of a rule set")
+            raise exceptions.app.UnexpectedOutput("API response does not match the expected schema for listing rules of a rule set")
         return results
 
     def get_stream_by_id(self, stream_id: int):
@@ -456,13 +456,13 @@ class LogicHubAPI:
         #     return response.json()
         # except requests.exceptions.HTTPError:
         #     if self.last_response_status == 400 and 'Cannot find entity for id StreamId' in self.last_response_text:
-        #         raise exceptions.StreamNotFound(stream_id)
+        #         raise exceptions.app.StreamNotFound(stream_id)
         response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers, test_response=False)
         try:
             response.raise_for_status()
         except requests.exceptions.HTTPError:
             if response.status_code == 400 and 'Cannot find entity for id StreamId' in response.text:
-                raise exceptions.StreamNotFound(stream_id)
+                raise exceptions.app.StreamNotFound(stream_id)
         return response.json()
 
     def get_version_info(self):
@@ -505,7 +505,7 @@ class LogicHubAPI:
         try:
             results = results["result"]
         except Exception:
-            raise exceptions.UnexpectedOutput("API response does not match the expected schema for adding a scoring rule")
+            raise exceptions.app.UnexpectedOutput("API response does not match the expected schema for adding a scoring rule")
         return results
 
     def export_playbook(self, playbook_id, test_response=True):
@@ -638,7 +638,7 @@ class LogicHubAPI:
             try:
                 _ = results["result"]["data"]
             except Exception:
-                raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
+                raise exceptions.app.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
         return results
 
     # ToDo Token auth not supported as of 2022-03-09 (m92)
@@ -789,7 +789,7 @@ class LogicHubAPI:
         try:
             results = results["result"]["data"]
         except Exception:
-            raise exceptions.UnexpectedOutput("API response does not match the expected schema for listing rule sets")
+            raise exceptions.app.UnexpectedOutput("API response does not match the expected schema for listing rule sets")
         return results
 
     def list_stream_states(self, stream_ids: list):
@@ -981,9 +981,9 @@ class LogicHubAPI:
             response = response.json()
             is_invalid = response['result'].get('error')
             if is_invalid is None:
-                raise exceptions.Validation.BaseValidationError('Unexpected response while validating query string.')
+                raise exceptions.app.UnexpectedOutput('Unexpected response while validating query string.')
             elif is_invalid:
-                raise exceptions.Validation.AlertQueryValidationError(response['result'].get('message'))
+                raise exceptions.validation.AlertQueryValidationError(response['result'].get('message'))
 
     def alerts_search_advanced(self, query: str = None, limit: int = None):
         # Sanitize inputs
