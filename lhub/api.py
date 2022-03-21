@@ -888,9 +888,8 @@ class LogicHubAPI:
         return output
 
     def case_list_attached_notebooks(self, case_id, results_only=False):
-        case_id = helpers.format_case_id_with_prefix(case_id, self.case_prefix)
         body = {
-            "id": case_id,
+            "id": helpers.format_case_id_with_prefix(case_id, self.case_prefix),
             "key": "case",
         }
         response = self._http_request(
@@ -910,12 +909,11 @@ class LogicHubAPI:
 
     def case_overwrite_attached_notebooks(self, case_id, notebooks):
         notebooks = helpers.format_notebook_ids(notebooks)
-        case_id = helpers.format_case_id_with_prefix(case_id, self.case_prefix)
         body = {
             "notebookAttachmentIds": notebooks,
             "notebookAttachedEntityId": {
                 "key": "case",
-                "id": case_id,
+                "id": helpers.format_case_id_with_prefix(case_id, self.case_prefix),
             }
         }
         response = self._http_request(
