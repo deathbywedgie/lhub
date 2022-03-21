@@ -12,12 +12,17 @@ def __id_string_to_int(var: str, lh_format_exception: formatting.BaseFormatError
     return int(re.search(r'\d+', var).group())
 
 
+@dispatch(Number)
 def format_alert_id(var):
-    if isinstance(var, str):
-        return __id_string_to_int(var, formatting.InvalidAlertIdFormat(input_var=var))
     return int(var)
 
 
+@dispatch(str)
+def format_alert_id(var):
+    return __id_string_to_int(var, formatting.InvalidAlertIdFormat(input_var=var))
+
+
+# ToDo Put this to use in api & lhub
 @dispatch(Number)
 def format_case_id(var):
     return int(var)
@@ -33,30 +38,40 @@ def format_case_id_with_prefix(case_id, case_prefix):
     return f"{case_prefix}-{format_case_id(case_id)}"
 
 
-def format_notebook_ids(notebook_ids):
-    if not isinstance(notebook_ids, list):
-        notebook_ids = [notebook_ids]
-    final_notebooks = []
-    for input_value in notebook_ids:
-        if isinstance(input_value, dict):
-            # In case a raw notebook object is passed, drill into the 'id' field for the part we need
-            if isinstance(input_value, dict) and isinstance(input_value.get('id'), dict):
-                input_value = input_value['id']
-            if not input_value or 'id' not in input_value.keys() or not isinstance(input_value['id'], (int, str)):
-                raise formatting.InvalidNotebookIdFormat(input_value)
-            final_notebooks.append({'key': 'notebook', 'id': int(input_value['id'])})
-        else:
-            try:
-                final_notebooks.append({'key': 'notebook', 'id': int(input_value)})
-            except (ValueError, TypeError):
-                raise formatting.InvalidNotebookIdFormat(input_value)
-    return final_notebooks
-
-
-def format_playbook_id(var):
-    if isinstance(var, str):
-        return __id_string_to_int(var, formatting.InvalidPlaybookIdFormat(input_var=var))
+@dispatch(Number)
+def format_notebook_id(var):
     return int(var)
+
+
+@dispatch(str)
+def format_notebook_id(var):
+    return __id_string_to_int(var, formatting.InvalidNotebookIdFormat(input_var=var))
+
+
+@dispatch(dict)
+def format_notebook_id(var):
+    # In case a raw notebook object is passed, drill into the 'id' field for the part we need
+    if isinstance(var.get('id'), dict):
+        return format_notebook_id(var['id'])
+    if not var.get('id') or not var.get('key'):
+        raise formatting.InvalidNotebookIdFormat(input_var=json.dumps(var))
+    return int(var.get('id'))
+
+
+def format_notebook_ids(var_list):
+    if not isinstance(var_list, list):
+        var_list = [var_list]
+    return [{'key': 'notebook', 'id': format_notebook_id(var)} for var in var_list]
+
+
+@dispatch(Number)
+def format_playbook_id(var):
+    return int(var)
+
+
+@dispatch(str)
+def format_playbook_id(var):
+    return __id_string_to_int(var, formatting.InvalidPlaybookIdFormat(input_var=var))
 
 
 def format_stream_id(alert_id):
@@ -102,4 +117,4 @@ def sort_notebook_objects_by_id(notebooks):
     return sorted(notebooks, key=lambda x: (x['id']['id']))
 
 
-del re, json, formatting
+del re, json, dispatch, Number, formatting
