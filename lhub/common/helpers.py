@@ -93,7 +93,7 @@ def sanitize_input_rule_field_mappings(field_mappings):
     return field_mappings
 
 
-def sanitize_input_rule_score(score, round_points: int = None):
+def format_rule_score(score, round_points: int = None):
     try:
         score = float(score)
         assert 0 <= score <= 10
@@ -104,7 +104,7 @@ def sanitize_input_rule_score(score, round_points: int = None):
     return score
 
 
-def sanitize_input_rule_set_id(rule_set_id):
+def format_rule_set_id(rule_set_id):
     if isinstance(rule_set_id, int):
         return rule_set_id
     rule_set_num_str = re.sub(r'\D+', '', str(rule_set_id))

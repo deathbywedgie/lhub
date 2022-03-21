@@ -437,7 +437,7 @@ class LogicHubAPI:
 
     # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
     def get_rules_for_rule_set(self, rule_set):
-        rule_set = helpers.sanitize_input_rule_set_id(rule_set)
+        rule_set = helpers.format_rule_set_id(rule_set)
         params = {
             "fields": "name,isPublic,rules[filter,values*1000,score]*1000",
         }
@@ -490,9 +490,9 @@ class LogicHubAPI:
     # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
     # ToDo Create an action method for this, and update the beta integration action to use it
     def add_scoring_rule(self, rule_set, field_mappings, score: float or str):
-        rule_set = helpers.sanitize_input_rule_set_id(rule_set)
+        rule_set = helpers.format_rule_set_id(rule_set)
         field_mappings = helpers.sanitize_input_rule_field_mappings(field_mappings)
-        score = helpers.sanitize_input_rule_score(score)
+        score = helpers.format_rule_score(score)
         headers = {"Content-Type": "application/json"}
         body = {
             "method": "addRule",
