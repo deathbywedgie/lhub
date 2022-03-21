@@ -7,3 +7,6 @@ def is_url(url):
         return all([result.scheme, result.netloc])
     except ValueError:
         return False
+
+
+del urlparse
