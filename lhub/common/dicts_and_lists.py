@@ -16,7 +16,7 @@ def to_dict_recursive(obj, track_changes=False):
         if type(_obj) is str:
             try:
                 _new = json.loads(_obj)
-            except:
+            except (json.JSONDecodeError, TypeError):
                 pass
             else:
                 if _new != _obj:
@@ -70,7 +70,7 @@ def sort_dicts_and_lists(input_value):
             for k in _output:
                 try:
                     temp_map_input_as_strings[json.dumps(k)] = k
-                except:
+                except (json.JSONDecodeError, TypeError):
                     temp_map_input_as_strings[str(k)] = k
 
             # Sort real values by their string versions
