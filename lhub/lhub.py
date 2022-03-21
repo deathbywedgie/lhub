@@ -2,10 +2,12 @@ import json
 import re
 from copy import deepcopy
 
-from lhub.api import LogicHubAPI
-from lhub.log import Logger
-from lhub.common.helpers import format_notebook_ids
+from .api import LogicHubAPI
+from .log import Logger
+from .common.helpers import format_notebook_ids
 
+
+# ToDo look for all non-lhub exceptions and see if they need to be updated
 
 class Actions:
     log = None
@@ -395,7 +397,11 @@ class Actions:
 class LogicHub:
     verify_ssl = True
 
-    def __init__(self, hostname, api_key=None, username=None, password=None, verify_ssl=True, cache_seconds=None, verify_api_auth=True, logger: Logger = None, log_level=None, default_timeout=None, **kwargs):
+    def __init__(
+            self, hostname, api_key=None, username=None, password=None,
+            verify_ssl=True, cache_seconds=None, verify_api_auth=True,
+            logger: Logger = None, log_level=None, default_timeout=None,
+            **kwargs):
         # If the LogicHubAPI class object has not been given a logger by the time this class is instantiated, set one for it
         LogicHubAPI.log = LogicHubAPI.log or logger or Logger()
         if log_level:

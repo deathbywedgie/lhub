@@ -170,7 +170,7 @@ class LogicHubAPI:
 
     @property
     def session_cookie(self):
-        # ToDo Replace this later, but for now include this until I'm sure the update is all ready
+        # This should only ever come up w/ password auth, so if this has been invoked when there is an API key then throw an exception
         if self.__api_key:
             raise exceptions.LhBaseException('Session cookie should not be invoked')
         if not self.__session_cookie:
