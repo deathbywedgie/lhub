@@ -118,6 +118,3 @@ def sanitize_input_rule_field_mappings(field_mappings):
 
 def sort_notebook_objects_by_id(notebooks):
     return sorted(notebooks, key=lambda x: (x['id']['id']))
-
-
-del re, json, dispatch, Number, formatting
