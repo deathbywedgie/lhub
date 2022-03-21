@@ -76,6 +76,3 @@ def sort_dicts_and_lists(input_value):
             # Sort real values by their string versions
             _output = [temp_map_input_as_strings[k] for k in sorted(temp_map_input_as_strings.keys())]
     return _output
-
-
-del ast, json

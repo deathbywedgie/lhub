@@ -47,6 +47,3 @@ class PasswordAuthFailure(AuthFailure):
     def __init__(self, message=None, *args, **kwargs):
         self.message = message or self.__default_message
         super().__init__(*args, **kwargs)
-
-
-del BaseAppError

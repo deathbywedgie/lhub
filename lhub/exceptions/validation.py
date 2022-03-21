@@ -30,6 +30,3 @@ class VersionMinimumNotMet(BaseValidationError):
         self.message = self.__default_message.format(feature_label, min_version)
         self.id = feature_label
         super().__init__(self.message, *args, **kwargs)
-
-
-del BaseAppError, LhBaseException

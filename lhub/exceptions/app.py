@@ -57,6 +57,3 @@ class StreamNotFound(BaseAppError):
             self.__default_message += f": {self.input}"
         self.message = message or self.__default_message
         super().__init__(self.message, *args, **kwargs)
-
-
-del LhBaseException, HTTPError
