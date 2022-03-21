@@ -89,3 +89,6 @@ def sanitize_input_rule_set_id(rule_set_id):
 
 def sort_notebook_objects_by_id(notebooks):
     return sorted(notebooks, key=lambda x: (x['id']['id']))
+
+
+del re, json, formatting

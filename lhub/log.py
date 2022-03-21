@@ -61,3 +61,6 @@ class Logger:
 
     def fatal(self, msg):
         self.__print("fatal", msg)
+
+
+del sys
