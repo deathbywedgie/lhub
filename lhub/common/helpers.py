@@ -1,4 +1,4 @@
-from lhub import exceptions
+from ..exceptions import formatting
 import re
 import json
 
@@ -6,7 +6,7 @@ import json
 def format_alert_id(alert_id):
     if isinstance(alert_id, str):
         if not re.match(r'^(?:alert-)?\d+$', alert_id):
-            raise exceptions.Formatting.InvalidAlertIdFormat(alert_id)
+            raise formatting.InvalidAlertIdFormat(alert_id)
         alert_id = re.sub(r'\D+', '', alert_id)
     return int(alert_id)
 
@@ -30,20 +30,20 @@ def format_notebook_ids(notebook_ids):
             if isinstance(input_value, dict) and isinstance(input_value.get('id'), dict):
                 input_value = input_value['id']
             if not input_value or 'id' not in input_value.keys() or not isinstance(input_value['id'], (int, str)):
-                raise exceptions.Formatting.InvalidNotebookIdFormat(input_value)
+                raise formatting.InvalidNotebookIdFormat(input_value)
             final_notebooks.append({'key': 'notebook', 'id': int(input_value['id'])})
         else:
             try:
                 final_notebooks.append({'key': 'notebook', 'id': int(input_value)})
             except (ValueError, TypeError):
-                raise exceptions.Formatting.InvalidNotebookIdFormat(input_value)
+                raise formatting.InvalidNotebookIdFormat(input_value)
     return final_notebooks
 
 
 def format_playbook_id(playbook_id):
     if isinstance(playbook_id, str):
         if not re.match(r'^(?:flow-)?\d+$', playbook_id):
-            raise exceptions.Formatting.InvalidPlaybookIdFormat(playbook_id)
+            raise formatting.InvalidPlaybookIdFormat(playbook_id)
         playbook_id = re.sub(r'\D+', '', playbook_id)
     return int(playbook_id)
 
@@ -51,7 +51,7 @@ def format_playbook_id(playbook_id):
 def format_stream_id(alert_id):
     if isinstance(alert_id, str):
         if not re.match(r'^(?:stream-)?\d+$', alert_id):
-            raise exceptions.Formatting.InvalidStreamIdFormat(alert_id)
+            raise formatting.InvalidStreamIdFormat(alert_id)
         alert_id = re.sub(r'\D+', '', alert_id)
     return int(alert_id)
 
@@ -61,9 +61,9 @@ def sanitize_input_rule_field_mappings(field_mappings):
         try:
             field_mappings = json.loads(field_mappings)
         except Exception:
-            raise exceptions.Formatting.InvalidRuleFormat(field_mappings)
+            raise formatting.InvalidRuleFormat(field_mappings)
     if not field_mappings:
-        raise exceptions.Formatting.InvalidRuleFormat(field_mappings)
+        raise formatting.InvalidRuleFormat(field_mappings)
     return field_mappings
 
 
