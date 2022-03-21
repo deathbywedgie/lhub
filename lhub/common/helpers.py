@@ -87,9 +87,9 @@ def sanitize_input_rule_field_mappings(field_mappings):
         try:
             field_mappings = json.loads(field_mappings)
         except Exception:
-            raise formatting.InvalidRuleFormat(field_mappings)
+            raise formatting.InvalidRuleFormat(input_var=field_mappings)
     if not field_mappings:
-        raise formatting.InvalidRuleFormat(field_mappings)
+        raise formatting.InvalidRuleFormat(input_var=field_mappings)
     return field_mappings
 
 
