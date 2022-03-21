@@ -10,12 +10,10 @@ def __id_string_to_int(var: str, lh_format_exception: formatting.BaseFormatError
     return int(re.search(r'\d+', var).group())
 
 
-def format_alert_id(alert_id):
-    if isinstance(alert_id, str):
-        if not re.match(r'^(?:alert-)?\d+$', alert_id):
-            raise formatting.InvalidAlertIdFormat(alert_id)
-        alert_id = re.sub(r'\D+', '', alert_id)
-    return int(alert_id)
+def format_alert_id(var):
+    if isinstance(var, str):
+        return __id_string_to_int(var, formatting.InvalidAlertIdFormat(input_var=var))
+    return int(var)
 
 
 def format_case_id_with_prefix(case_id, case_prefix):
@@ -47,12 +45,10 @@ def format_notebook_ids(notebook_ids):
     return final_notebooks
 
 
-def format_playbook_id(playbook_id):
-    if isinstance(playbook_id, str):
-        if not re.match(r'^(?:flow-)?\d+$', playbook_id):
-            raise formatting.InvalidPlaybookIdFormat(playbook_id)
-        playbook_id = re.sub(r'\D+', '', playbook_id)
-    return int(playbook_id)
+def format_playbook_id(var):
+    if isinstance(var, str):
+        return __id_string_to_int(var, formatting.InvalidPlaybookIdFormat(input_var=var))
+    return int(var)
 
 
 def format_stream_id(alert_id):
