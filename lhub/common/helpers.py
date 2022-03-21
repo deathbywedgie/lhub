@@ -74,12 +74,35 @@ def format_playbook_id(var):
     return __id_string_to_int(var, formatting.InvalidPlaybookIdFormat(input_var=var))
 
 
-def format_stream_id(alert_id):
-    if isinstance(alert_id, str):
-        if not re.match(r'^(?:stream-)?\d+$', alert_id):
-            raise formatting.InvalidStreamIdFormat(alert_id)
-        alert_id = re.sub(r'\D+', '', alert_id)
-    return int(alert_id)
+@dispatch(Number, Number)
+def format_rule_score(score, round_points=None):
+    score = float(score)
+    round_points = int(round_points)
+    if not 0 <= score <= 10:
+        raise formatting.InvalidRuleScore
+    if round_points:
+        score = round(score, round_points)
+    return score
+
+
+@dispatch(Number)
+def format_rule_set_id(var):
+    return int(var)
+
+
+@dispatch(str)
+def format_rule_set_id(var):
+    return __id_string_to_int(var, formatting.InvalidRuleSetIdFormat(input_var=var))
+
+
+@dispatch(Number)
+def format_stream_id(var):
+    return int(var)
+
+
+@dispatch(str)
+def format_stream_id(var):
+    return __id_string_to_int(var, formatting.InvalidStreamIdFormat(input_var=var))
 
 
 def sanitize_input_rule_field_mappings(field_mappings):
@@ -91,26 +114,6 @@ def sanitize_input_rule_field_mappings(field_mappings):
     if not field_mappings:
         raise formatting.InvalidRuleFormat(input_var=field_mappings)
     return field_mappings
-
-
-def format_rule_score(score, round_points: int = None):
-    try:
-        score = float(score)
-        assert 0 <= score <= 10
-    except (ValueError, TypeError, AssertionError):
-        raise ValueError("Score must be a number between 0 and 10")
-    if round_points:
-        score = round(score, round_points)
-    return score
-
-
-def format_rule_set_id(rule_set_id):
-    if isinstance(rule_set_id, int):
-        return rule_set_id
-    rule_set_num_str = re.sub(r'\D+', '', str(rule_set_id))
-    if not rule_set_num_str:
-        raise ValueError("Invalid rule set ID")
-    return int(rule_set_num_str)
 
 
 def sort_notebook_objects_by_id(notebooks):
