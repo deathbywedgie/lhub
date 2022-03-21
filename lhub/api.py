@@ -4,6 +4,8 @@ import re
 from collections import namedtuple
 
 import requests
+from urllib3 import disable_warnings
+from urllib3.exceptions import InsecureRequestWarning
 import sys
 import time
 
@@ -66,8 +68,6 @@ class LogicHubAPI:
         if not self.verify_ssl:
             # Disable certificate warnings
             self.log.debug("Disabling SSL warnings...")
-            from urllib3 import disable_warnings
-            from urllib3.exceptions import InsecureRequestWarning
             disable_warnings(InsecureRequestWarning)
 
         if self.__api_key:
