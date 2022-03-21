@@ -1,6 +1,8 @@
 from ..exceptions import formatting
 import re
 import json
+from multipledispatch import dispatch
+from numbers import Number
 
 
 def __id_string_to_int(var: str, lh_format_exception: formatting.BaseFormatError):
@@ -16,13 +18,19 @@ def format_alert_id(var):
     return int(var)
 
 
+@dispatch(Number)
+def format_case_id(var):
+    return int(var)
+
+
+# ToDo Add one for a dict in the format of {"key": "notebook", "id": int} (whatever is the equivalent for cases)
+@dispatch(str)
+def format_case_id(var):
+    return __id_string_to_int(var, formatting.InvalidCaseIdFormat(input_var=var))
+
+
 def format_case_id_with_prefix(case_id, case_prefix):
-    if not case_id and not str(case_id).strip():
-        raise ValueError("Case ID cannot be blank")
-    case_id = str(case_id).strip()
-    if '-' not in case_id:
-        case_id = f"{case_prefix}-{case_id}"
-    return case_id
+    return f"{case_prefix}-{format_case_id(case_id)}"
 
 
 def format_notebook_ids(notebook_ids):

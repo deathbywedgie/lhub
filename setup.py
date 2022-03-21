@@ -11,7 +11,8 @@ setup(
     long_description="A Python package for interacting with LogicHub APIs",
     packages=find_packages(),
     install_requires=[
-        "requests"
+        "requests",
+        "multipledispatch",
     ],
     keywords=["python", "lhub", "LogicHub"],
 
