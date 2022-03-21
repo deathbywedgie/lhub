@@ -10,14 +10,17 @@ class BaseAppError(LhBaseException, HTTPError):
         super().__init__(self.message, *args, **kwargs)
 
 
-class UnexpectedOutput(BaseAppError):
-    """Authentication Failed"""
+class BatchNotFound(BaseAppError):
+    """Batch ID not found"""
 
-    __default_message = 'Unexpected output returned'
+    __default_message = 'Batch not found'
 
-    def __init__(self, message=None, *args, **kwargs):
+    def __init__(self, input_var, message=None, *args, **kwargs):
+        self.input = input_var
+        if self.input:
+            self.__default_message += f": {self.input}"
         self.message = message or self.__default_message
-        super().__init__(*args, **kwargs)
+        super().__init__(self.message, *args, **kwargs)
 
 
 class RuleSetNotFound(BaseAppError):
@@ -33,23 +36,10 @@ class RuleSetNotFound(BaseAppError):
         super().__init__(self.message, *args, **kwargs)
 
 
-class BatchNotFound(BaseAppError):
-    """Batch ID not found"""
-
-    __default_message = 'Unable to find batch with id'
-
-    def __init__(self, input_var, message=None, *args, **kwargs):
-        self.input = input_var
-        if self.input:
-            self.__default_message += f": {self.input}"
-        self.message = message or self.__default_message
-        super().__init__(self.message, *args, **kwargs)
-
-
 class StreamNotFound(BaseAppError):
     """Stream ID not found"""
 
-    __default_message = 'Unable to find stream with id'
+    __default_message = 'Stream not found'
 
     def __init__(self, input_var, message=None, *args, **kwargs):
         self.input = input_var
@@ -57,3 +47,13 @@ class StreamNotFound(BaseAppError):
             self.__default_message += f": {self.input}"
         self.message = message or self.__default_message
         super().__init__(self.message, *args, **kwargs)
+
+
+class UnexpectedOutput(BaseAppError):
+    """Authentication Failed"""
+
+    __default_message = 'Unexpected output returned'
+
+    def __init__(self, message=None, *args, **kwargs):
+        self.message = message or self.__default_message
+        super().__init__(*args, **kwargs)
