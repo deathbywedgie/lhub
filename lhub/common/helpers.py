@@ -3,6 +3,13 @@ import re
 import json
 
 
+def __id_string_to_int(var: str, lh_format_exception: formatting.BaseFormatError):
+    var = var.strip()
+    if not re.match(r'^(?:\S+-)?\d+$', var):
+        raise lh_format_exception
+    return int(re.search(r'\d+', var).group())
+
+
 def format_alert_id(alert_id):
     if isinstance(alert_id, str):
         if not re.match(r'^(?:alert-)?\d+$', alert_id):
