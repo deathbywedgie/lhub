@@ -117,7 +117,7 @@ class Actions:
 
     def get_alert_by_id(self, alert_id, simple_format=False, included_standard_fields=None, included_additional_fields=None):
         result = self.__api.alert_fetch(alert_id)
-        _ = self._result_dict_has_schema(result, "result", action_description="list users", raise_errors=True)
+        _ = self._result_dict_has_schema(result, "result", action_description="fetch alert", raise_errors=True)
 
         # Reformat alert and enrich as needed
         output = self.__enrich_alert_data(
@@ -135,7 +135,7 @@ class Actions:
 
     def get_batch_results_by_id(self, batch_id: int, limit=1000, keep_additional_info=False):
         result = self.__api.get_batch_results_by_id(batch_id=batch_id, limit=limit)
-        _ = self._result_dict_has_schema(result, "result", "data", raise_errors=True, action_description="fetch batch results")
+        _ = self._result_dict_has_schema(result, "result", "data", raise_errors=True, action_description="get batch results by batch ID")
         result = result["result"]["data"]
         if not keep_additional_info:
             result = [r["columns"] for r in result]
@@ -186,7 +186,7 @@ class Actions:
             workflow_id = workflow_id[0]
         workflow_id = int(workflow_id)
         result = self.__api.get_workflow_by_id(workflow_id=workflow_id)
-        _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="fetch workflow by ID")
+        _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="get workflow by ID")
         return result["result"]
 
     def list_baselines(self):
@@ -196,7 +196,7 @@ class Actions:
         baselines = result['data']
         stream_ids = [int(b['id']['id']) for b in baselines]
         stream_state_response = self.__api.list_stream_states(stream_ids=stream_ids)
-        _ = self._result_dict_has_schema(stream_state_response, "result", "streams", raise_errors=True, action_description="fetch stream states")
+        _ = self._result_dict_has_schema(stream_state_response, "result", "streams", raise_errors=True, action_description="list stream states")
         state_map = {_stream['streamId']: _stream['status'] for _stream in stream_state_response['result']['streams']}
         for n in range(len(baselines)):
             b = baselines[n]
