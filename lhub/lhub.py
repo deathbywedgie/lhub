@@ -324,7 +324,7 @@ class Actions:
         return result["result"]
 
     def list_users(self, hide_inactive=False):
-        result = self.__api.users(hide_inactive=hide_inactive)
+        result = self.__api.list_users(hide_inactive=hide_inactive)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list users", raise_errors=True)
         return result["result"]
 

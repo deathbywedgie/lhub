@@ -940,7 +940,7 @@ class LogicHubAPI:
         )
         return response.json()
 
-    def users(self, limit=None, hide_inactive=False):
+    def list_users(self, limit=None, hide_inactive=False):
         limit = limit if limit and isinstance(limit, int) else 99999
         params = {"pageSize": limit, "after": 0}
         body = {"filters": []}
