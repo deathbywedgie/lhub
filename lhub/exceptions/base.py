@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-
-
 class LhBaseException(BaseException):
     """There was a generic exception that occurred while handling your
     request.
