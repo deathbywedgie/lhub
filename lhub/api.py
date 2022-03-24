@@ -575,17 +575,18 @@ class LogicHubAPI:
             self.log.fatal(message)
         return response.json()
 
-    def list_baselines(self, limit=None, offset=0):
+    def list_baselines(self, limit=None, offset=0, filters=None):
         """
         List all Baselines
 
         :param limit: None by default, although the LogicHub UI defaults to 25
         :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
+        :param filters: Optional: Advanced search filters (list of dicts)
         :return:
         """
         limit = int(limit if limit and limit > 0 else 999999999)
         params = {"libraryView": "all"}
-        body = {"filters": [], "offset": offset or 0, "pageSize": limit, "sortColumn": "lastUpdated", "sortOrder": "DESC"}
+        body = {"filters": filters or [], "offset": offset or 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
         response = self._http_request(method="POST", url=self.url.baselines, params=params, body=body)
         return response.json()
 
@@ -593,7 +594,7 @@ class LogicHubAPI:
         """
         List all connections
 
-        :param filters: Optional: Advanced search
+        :param filters: Optional: Advanced search filters (list of dicts)
         :param limit: None by default, although the LogicHub UI defaults to 25
         :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
         :return:
