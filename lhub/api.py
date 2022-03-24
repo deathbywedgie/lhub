@@ -290,9 +290,9 @@ class LogicHubAPI:
         try:
             _response.raise_for_status()
         except HTTPError as err:
-            self.log.warn(f"Logout failed with HTTP error: {str(err)}")
+            self.log.warning(f"Logout failed with HTTP error: {str(err)}")
         except Exception as err:
-            self.log.warn(f"Logout failed with UNKNOWN error: {repr(err)}")
+            self.log.warning(f"Logout failed with UNKNOWN error: {repr(err)}")
         else:
             self.log.debug(f"Logout successful")
             self.session_cookie = None
