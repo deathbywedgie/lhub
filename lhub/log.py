@@ -13,6 +13,9 @@ class Logger:
         self.log_level = log_level if log_level else self.default_log_level
         # self.session_prefix = session_prefix or ""
         self.session_prefix = (session_prefix or self.generate_logger_prefix()).strip()
+        # ToDo log.warn is deprecated by the logging module, so start transitioning to log.warning for everything so that it's all ready to replace this temporary logger class
+        # ToDo Test other levels. Any others deprecated too?
+        self.warn = self.warning
 
     def generate_logger_prefix(self):
         return f"[{hex(id(self))}] "
@@ -47,7 +50,7 @@ class Logger:
     def notice(self, msg):
         self.__print("notice", msg)
 
-    def warn(self, msg):
+    def warning(self, msg):
         self.__print("warn", msg)
 
     def error(self, msg):
