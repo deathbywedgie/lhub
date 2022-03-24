@@ -590,6 +590,21 @@ class LogicHubAPI:
         response = self._http_request(method="POST", url=self.url.baselines, params=params, body=body)
         return response.json()
 
+    def list_commands(self, limit=None, offset=0, filters=None):
+        """
+        List all Commands
+
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
+        :param filters: Optional: Advanced search filters (list of dicts)
+        :return:
+        """
+        limit = int(limit if limit and limit > 0 else 999999999)
+        params = {"libraryView": "all"}
+        body = {"filters": filters or [], "offset": offset or 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
+        response = self._http_request(method="POST", url=self.url.commands, params=params, body=body)
+        return response.json()
+
     def list_connections(self, filters=None, limit=None, offset=0):
         """
         List all connections

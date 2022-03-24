@@ -73,6 +73,10 @@ class URLs:
         return f"{self.base}/api/commands/execute"
 
     @property
+    def commands(self):
+        return f"{self.base}/api/content-management/content/command"
+
+    @property
     def connection_status(self):
         return f"{self.base}/api/connection/status"
 

@@ -5,6 +5,7 @@ from copy import deepcopy
 from .api import LogicHubAPI
 from .log import Logger
 from .common.helpers import format_notebook_ids
+from .common.time import epoch_time_to_str
 
 
 # ToDo look for all non-lhub exceptions and see if they need to be updated
@@ -203,6 +204,22 @@ class Actions:
             _id = int(b['id']['id'])
             baselines[n]['baseline_config_status'] = state_map.get(f"stream-{b['id']['id']}")
         return result
+
+    def list_commands(self, filters: list = None, limit: int = None, reformat=False):
+        result = self.__api.list_commands(filters=filters, limit=limit, offset=0)
+        _ = self._result_dict_has_schema(result, "result", "data", "data", action_description="list commands", raise_errors=True)
+        results = result["result"]["data"]["data"]
+        if reformat:
+            for n in range(len(results)):
+                results[n] = {
+                    "name": results[n]["name"],
+                    "id": int(results[n]["id"]["id"]),
+                    "flowId": results[n]["flowId"],
+                    "owner": results[n]["owner"],
+                    "last_updated": epoch_time_to_str(results[n]["lastUpdated"] / 1000),
+                    "commandStatus": results[n]["commandStatus"],
+                }
+        return results
 
     def list_connections(self, filters=None, add_status=False):
         result = self.__api.list_connections(filters=filters)
