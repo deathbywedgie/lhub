@@ -53,7 +53,7 @@ class Logger:
     def error(self, msg):
         self.__print("error", msg)
 
-    def crit(self, msg):
+    def critical(self, msg):
         self.__print("crit", msg)
 
     def alert(self, msg):
