@@ -119,7 +119,6 @@ class LogicHubAPI:
     def fields(self):
         if not self.__get_cached_object(self.__fields):
             _ = self.list_fields()
-            self.log.debug(f"Updated cached property: fields (timeout: {self.cache_seconds} sec")
         return self.__fields.value
 
     @fields.setter
@@ -279,13 +278,14 @@ class LogicHubAPI:
         self.log.debug("Login successful")
 
     def logout(self):
+        self.log.debug("Logout requested")
         if self.auth_type != 'password':
             raise exceptions.LhBaseException('Login process is only used for password auth')
         if not self.session_cookie:
             self.log.debug("Already logged out; logout skipped")
             return
 
-        self.log.debug("Logout requested")
+        self.log.debug("Issuing logout command")
         _response = self._http_request(url=self.url.logout, method="POST", test_response=False, reauth=False, timeout=self._http_timeout_login)
         try:
             _response.raise_for_status()
@@ -338,6 +338,7 @@ class LogicHubAPI:
         limit = int(limit or 1000)
         offset = int(offset or 0)
         params = {"fields": "*", "pageSize": limit, "after": offset, "cachedOnly": "true"}
+        self.log.debug("Fetching batch results")
         response = self._http_request(url=self.url.batch_results_by_id.format(int(batch_id)), params=params)
         return response.json()
 
@@ -357,6 +358,7 @@ class LogicHubAPI:
             "after": int(offset or 0),
         }
         body = {"status": statuses or [], "excludeBatchesWithZeroEvents": exclude_empty_results}
+        self.log.debug("Fetching batches")
         response = self._http_request(method="POST", url=self.url.stream_batches.format(stream_id), params=params, body=body)
         return response.json()
 
@@ -376,7 +378,7 @@ class LogicHubAPI:
                 connection_list.append(f"connection-{connection}")
 
         headers = {"Content-Type": "application/json"}
-        # response = self._http_request(method="POST", url=self.url.connection_status, headers=headers, body=json.dumps(connection_list))
+        self.log.debug("Fetching connection status")
         response = self._http_request(method="POST", url=self.url.connection_status, headers=headers, body=connection_list)
         return response.json()
 
@@ -406,6 +408,7 @@ class LogicHubAPI:
             url = self.url.custom_list_data
             method = "GET"
             payload = None
+        self.log.debug("Fetching custom list data")
         response = self._http_request(
             method=method,
             url=url,
@@ -422,6 +425,7 @@ class LogicHubAPI:
 
     # ToDo Token auth not supported as of 2022-03-09 (m92)
     def get_dashboard_data(self, dashboard_id):
+        self.log.debug("Fetching dashboard data")
         response = self._http_request(url=self.url.dashboard_data.format(dashboard_id))
         return response.json()
 
@@ -441,6 +445,7 @@ class LogicHubAPI:
         params = {
             "fields": "name,isPublic,rules[filter,values*1000,score]*1000",
         }
+        self.log.debug("Fetching rules")
         response = self._http_request(url=self.url.rule_set.format(rule_set), params=params)
         results = response.json()
         try:
@@ -453,11 +458,13 @@ class LogicHubAPI:
         headers = {"Accept": "application/json"}
         # ToDo Revisit this. A better approach might be:
         # try:
+        #     self.log.debug("Fetching stream")
         #     response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers)
         #     return response.json()
         # except HTTPError:
         #     if self.last_response_status == 400 and 'Cannot find entity for id StreamId' in self.last_response_text:
         #         raise exceptions.app.StreamNotFound(stream_id)
+        self.log.debug("Fetching stream")
         response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers, test_response=False)
         try:
             response.raise_for_status()
@@ -467,7 +474,7 @@ class LogicHubAPI:
         return response.json()
 
     def get_version_info(self):
-        self.log.debug("Fetching LogicHub version")
+        self.log.debug("Fetching LogicHub version info")
         try:
             response = self._http_request(
                 url=self.url.version,
@@ -484,6 +491,7 @@ class LogicHubAPI:
 
     def get_workflow_by_id(self, workflow_id: int):
         assert isinstance(workflow_id, int), "Workflow ID must be an integer"
+        self.log.debug("Fetching workflow")
         response = self._http_request(method="GET", url=self.url.case_status_workflow_by_id.format(workflow_id))
         return response.json()
 
@@ -501,6 +509,7 @@ class LogicHubAPI:
                 "score": score
             }
         }
+        self.log.debug("Issuing new scoring rule")
         response = self._http_request(url=self.url.rule_set.format(rule_set), method="POST", body=body, headers=headers)
         results = response.json()
         try:
@@ -510,6 +519,7 @@ class LogicHubAPI:
         return results
 
     def export_playbook(self, playbook_id, test_response=True):
+        self.log.debug(f"Exporting playbook {playbook_id}")
         response = self._http_request(url=self.url.flow_export.format(playbook_id), test_response=test_response)
         return response.json()
 
@@ -521,6 +531,7 @@ class LogicHubAPI:
         :return:
         """
         limit = int(limit if limit and limit > 0 else 999999999)
+        self.log.debug("Executing LogicHub command")
         response = self._http_request(
             url=self.url.command_execute,
             method="POST",
@@ -587,6 +598,7 @@ class LogicHubAPI:
         limit = int(limit if limit and limit > 0 else 999999999)
         params = {"libraryView": "all"}
         body = {"filters": filters or [], "offset": offset or 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
+        self.log.debug("Fetching baselines")
         response = self._http_request(method="POST", url=self.url.baselines, params=params, body=body)
         return response.json()
 
@@ -602,6 +614,7 @@ class LogicHubAPI:
         limit = int(limit if limit and limit > 0 else 999999999)
         params = {"libraryView": "all"}
         body = {"filters": filters or [], "offset": offset or 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
+        self.log.debug("Fetching commands")
         response = self._http_request(method="POST", url=self.url.commands, params=params, body=body)
         return response.json()
 
@@ -618,6 +631,7 @@ class LogicHubAPI:
         params = {"libraryView": "all"}
         headers = {"Content-Type": "application/json"}
         body = {"filters": filters or [], "offset": offset, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
+        self.log.debug("Fetching connections")
         response = self._http_request(method="POST", url=self.url.connections, headers=headers, params=params, body=body)
         return response.json()
 
@@ -637,6 +651,7 @@ class LogicHubAPI:
         if search_text:
             filters.append({"searchText": search_text})
 
+        self.log.debug("Fetching custom lists")
         response = self._http_request(
             method="POST",
             url=self.url.custom_lists,
@@ -660,10 +675,12 @@ class LogicHubAPI:
 
     # ToDo Token auth not supported as of 2022-03-09 (m92)
     def list_dashboards(self):
+        self.log.debug("Fetching dashboards")
         response = self._http_request(url=self.url.dashboards)
         return response.json()
 
     def list_dashboards_with_widgets(self):
+        self.log.debug("Fetching dashboards with widgets")
         response = self._http_request(url=self.url.dashboards_and_widgets)
         return response.json()
 
@@ -676,6 +693,7 @@ class LogicHubAPI:
         # Not sure when this one stopped working, but it worked somewhere in at least m66 and didn't work any more in m70
         limit = int(limit if limit and limit > 0 else 999999999)
         params = {"limit": limit}
+        self.log.debug("Fetching event types")
         response = self._http_request(url=self.url.event_types, params=params)
         results = response.json()
         if results.get("result"):
@@ -695,6 +713,7 @@ class LogicHubAPI:
         params = {"libraryView": "all"}
         # Confirm the right term for "name" as the sort column and change this sort order
         body = {"filters": [], "pageSize": limit, "offset": offset or 0, "sortColumn": "lastUpdated", "sortOrder": "DESC"}
+        self.log.debug("Fetching event types")
         response = self._http_request(method="POST", url=self.url.event_types, params=params, body=body)
         results = response.json()
         if results.get("result"):
@@ -710,21 +729,25 @@ class LogicHubAPI:
         :return:
         """
         limit = int(limit if limit and limit > 0 else 999999999)
+        # ToDo Remove this old version when it's safe to assume no one still uses m70
         if self.version < 70:
             return self.__list_event_types_v1(limit=limit)
         return self.__list_event_types_v2(limit=limit)
 
     def list_fields(self, params: dict = None, **kwargs):
         params = params or {"systemFields": "true", "pageSize": 9999, "after": 0}
+        self.log.debug("Fetching fields")
         response = self._http_request(method="GET", url=self.url.fields, params=params, **kwargs)
         self.fields = response.json()
         return response.json()
 
     def list_integrations(self):
+        self.log.debug("Fetching integrations")
         response = self._http_request(method="GET", url=self.url.integrations)
         return response.json()
 
     def list_ml_models(self):
+        self.log.debug("Fetching ML models")
         response = self._http_request(
             method="GET",
             url=self.url.ml_models,
@@ -733,6 +756,7 @@ class LogicHubAPI:
         return response.json()
 
     def list_modules(self):
+        self.log.debug("Fetching modules")
         response = self._http_request(
             method="GET",
             url=self.url.modules,
@@ -759,6 +783,7 @@ class LogicHubAPI:
         }
         if search_string:
             body['filters'] = [{"searchText": search_string}]
+        self.log.debug("Fetching notebooks")
         response = self._http_request(
             url=self.url.notebooks_list,
             method="POST",
@@ -781,6 +806,7 @@ class LogicHubAPI:
         """
         limit = int(limit if limit and limit > 0 else 999999999)
         body = {"filters": [], "offset": offset or 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
+        self.log.debug("Fetching playbooks")
         response = self._http_request(
             url=self.url.playbooks_list,
             method="POST",
@@ -801,6 +827,7 @@ class LogicHubAPI:
             "fields": "name,isPublic",
             "pageSize": limit,
         }
+        self.log.debug("Fetching rule sets")
         response = self._http_request(url=self.url.rule_sets, params=params)
         results = response.json()
         try:
@@ -814,6 +841,7 @@ class LogicHubAPI:
         for s in stream_ids:
             new_stream_id_list.append(f'stream-{s}')
         body = {"streams": new_stream_id_list}
+        self.log.debug("Fetching stream states")
         response = self._http_request(method="POST", url=self.url.stream_states, body=body)
         return response.json()
 
@@ -843,10 +871,12 @@ class LogicHubAPI:
             "sortOrder": "ASC"
         }
 
+        self.log.debug("Fetching streams")
         response = self._http_request(method="POST", url=self.url.streams, body=body_dict, headers=headers, params=params)
         return response.json()
 
     def list_workflows(self):
+        self.log.debug("Fetching workflows")
         response = self._http_request(method="GET", url=self.url.case_status_list_workflows)
         return response.json()
 
@@ -861,10 +891,12 @@ class LogicHubAPI:
             batch_id = int(re.sub(r'\D+', '', str(batch_id)))
         headers = {"Content-Type": "application/json"}
         body = {"method": "reschedule", "parameters": {}}
+        self.log.debug("Issuing command to reprocess batch")
         response = self._http_request(method="POST", url=self.url.batch_reprocess.format(batch_id), headers=headers, body=body)
         return response.json()
 
     def me(self):
+        self.log.debug("Fetching \"me\" page")
         response = self._http_request(method="GET", url=self.url.me, timeout=30)
         return response.json()
 
@@ -887,6 +919,7 @@ class LogicHubAPI:
     #
     #     field_id = self.system_field_lh_linked_alerts.get('id')
     #     body = {"fields": [{"id": field_id, "value": alert_ids}]}
+    #     self.log.debug("Linking alert to case")
     #     response = self._http_request(
     #         method="PATCH",
     #         url=self.url.case_update_linked_alerts.format(case_id=case_id),
@@ -895,6 +928,7 @@ class LogicHubAPI:
     #     output = response.json()
 
     def cases_get_prefix(self):
+        self.log.debug("Fetching case prefix")
         response = self._http_request(
             url=self.url.cases_get_prefix,
             headers={"Content-Type": "application/json"}
@@ -908,6 +942,7 @@ class LogicHubAPI:
             "id": helpers.format_case_id_with_prefix(case_id, self.case_prefix),
             "key": "case",
         }
+        self.log.debug("Fetching attached notebooks")
         response = self._http_request(
             url=self.url.notebooks_attached,
             method="POST",
@@ -932,6 +967,7 @@ class LogicHubAPI:
                 "id": helpers.format_case_id_with_prefix(case_id, self.case_prefix),
             }
         }
+        self.log.debug("Updating attached notebooks")
         response = self._http_request(
             url=self.url.notebooks_attach,
             method="PATCH",
@@ -947,6 +983,7 @@ class LogicHubAPI:
         body = {"filters": []}
         if hide_inactive:
             body['filters'].append({"hideDeleted": True})
+        self.log.debug("Fetching user groups")
         response = self._http_request(
             url=self.url.user_groups,
             method="POST",
@@ -962,6 +999,7 @@ class LogicHubAPI:
         body = {"filters": []}
         if hide_inactive:
             body['filters'].append({"hideInactive": True})
+        self.log.debug("Fetching users")
         response = self._http_request(
             url=self.url.users,
             method="POST",
@@ -975,6 +1013,7 @@ class LogicHubAPI:
         alert_id = helpers.format_alert_id(alert_id)
         url = self.url.alert_fetch.format(alert_id)
         # Send request, but disable immediate testing in order to do specialized testing first
+        self.log.debug("Fetching alert")
         response = self._http_request(method="GET", url=url, test_response=False, **kwargs)
         if return_raw:
             return response
@@ -987,6 +1026,7 @@ class LogicHubAPI:
         if query:
             # First confirm that the query is valid
             body = {"queryType": "advanced", "query": query}
+            self.log.debug("Validating search syntax")
             response = self._http_request(
                 url=self.url.alerts_search_validate,
                 method="POST",
@@ -1014,6 +1054,7 @@ class LogicHubAPI:
             "sortOrder": "desc",
             "query": query
         }
+        self.log.debug("Searching alerts")
         response = self._http_request(
             url=self.url.alerts_search_advanced,
             method="POST",
@@ -1025,11 +1066,13 @@ class LogicHubAPI:
     def stream_pause(self, stream_id, **kwargs):
         # Sanitize stream ID
         body = [f"stream-{helpers.format_stream_id(stream_id)}"]
+        self.log.debug("Pausing stream")
         response = self._http_request(method="POST", url=self.url.stream_pause, body=body, **kwargs)
         return response.json()
 
     def stream_resume(self, stream_id, **kwargs):
         # Sanitize stream ID
         body = [f"stream-{helpers.format_stream_id(stream_id)}"]
+        self.log.debug("Resuming stream")
         response = self._http_request(method="POST", url=self.url.stream_resume, body=body, **kwargs)
         return response.json()
