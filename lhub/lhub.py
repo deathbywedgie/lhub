@@ -108,6 +108,11 @@ class Actions:
             _dict = _dict[field]
         return True
 
+    @property
+    def playbook_ids(self):
+        response = self.list_playbooks()
+        return {p["id"]["id"]: p["name"] for p in response}
+
     def execute_command(self, command_name, input_dict, reformat=True, result_limit=None):
         response = self.__api.execute_command({"command": command_name, "parameterValues": input_dict, "limit": result_limit})
         if not reformat:
@@ -311,11 +316,6 @@ class Actions:
         result = self.__api.list_notebooks()
         _ = self._result_dict_has_schema(result, "result", "data", "data", action_description="list notebooks", raise_errors=True)
         return result["result"]["data"]
-
-    @property
-    def playbook_ids(self):
-        response = self.list_playbooks()
-        return {p["id"]["id"]: p["name"] for p in response}
 
     def list_playbooks(self, limit=None, map_mode=None):
         assert not map_mode or map_mode in ['id', 'name'], f'Invalid output format: {map_mode}'
