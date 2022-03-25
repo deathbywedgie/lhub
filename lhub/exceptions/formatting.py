@@ -108,4 +108,13 @@ class InvalidStreamIdFormat(BaseFormatError):
         super().__init__(self.message, *args, **kwargs)
 
 
-del LhBaseException
+class InvalidWorkflowIdFormat(BaseFormatError):
+    """Invalid format for Stream IDs"""
+    __default_message = 'Invalid format for workflow ID'
+
+    def __init__(self, input_var, message=None, *args, **kwargs):
+        self.input = input_var
+        if self.input:
+            self.__default_message += f": {self.input}"
+        self.message = message or self.__default_message
+        super().__init__(self.message, *args, **kwargs)
