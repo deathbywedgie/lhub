@@ -19,27 +19,6 @@ class Actions:
         # If this class has not been given a logger by the time it is instantiated, inherit the same one from LogicHubAPI
         self.log = self.log or self.__api.log
 
-    @staticmethod
-    def __reformat_alert_simple(alert: dict):
-        if not alert:
-            return {}
-        alert = deepcopy(alert)
-        # From this: {"displayName": "batch_start_millis", "value": "1632146400000"}
-        # To this: {"batch_start_millis": "1632146400000"}
-        # ToDo 2022-03-09, research further and verify since m92: the step below causes a failure now, and it looks like it's because the alert API is returning cleaner results now
-        # alert['additionalFields'] = {x['displayName']: x['value'] for x in alert.get('additionalFields', {}) if x.get('displayName')}
-
-        # From this: {"caseFieldId": "field-17", "displayName": "Alert Context", "fieldType": "Text", "value": "mdr_test"}
-        # To this: {"Alert Context": "mdr_test"}
-        for k in alert.get('mappedAlertFieldValues', {}):
-            if k.get('fieldType') == 'JSON':
-                try:
-                    k['value'] = json.loads(k['value'])
-                except (ValueError, TypeError, json.decoder.JSONDecodeError):
-                    pass
-        alert['mappedAlertFieldValues'] = {x['displayName']: x['value'] for x in alert.get('mappedAlertFieldValues', {}) if x.get('displayName')}
-        return alert
-
     def _reformat_cmd_results(self, response_dict, drop_hidden_columns=True):
         full_result = response_dict.copy()
 
@@ -120,6 +99,27 @@ class Actions:
 
         response, _ = self._reformat_cmd_results(response)
         return response
+
+    @staticmethod
+    def __reformat_alert_simple(alert: dict):
+        if not alert:
+            return {}
+        alert = deepcopy(alert)
+        # From this: {"displayName": "batch_start_millis", "value": "1632146400000"}
+        # To this: {"batch_start_millis": "1632146400000"}
+        # ToDo 2022-03-09, research further and verify since m92: the step below causes a failure now, and it looks like it's because the alert API is returning cleaner results now
+        # alert['additionalFields'] = {x['displayName']: x['value'] for x in alert.get('additionalFields', {}) if x.get('displayName')}
+
+        # From this: {"caseFieldId": "field-17", "displayName": "Alert Context", "fieldType": "Text", "value": "mdr_test"}
+        # To this: {"Alert Context": "mdr_test"}
+        for k in alert.get('mappedAlertFieldValues', {}):
+            if k.get('fieldType') == 'JSON':
+                try:
+                    k['value'] = json.loads(k['value'])
+                except (ValueError, TypeError, json.decoder.JSONDecodeError):
+                    pass
+        alert['mappedAlertFieldValues'] = {x['displayName']: x['value'] for x in alert.get('mappedAlertFieldValues', {}) if x.get('displayName')}
+        return alert
 
     def get_alert_by_id(self, alert_id, simple_format=False, included_standard_fields=None, included_additional_fields=None):
         result = self.__api.alert_fetch(alert_id)
