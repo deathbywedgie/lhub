@@ -208,20 +208,25 @@ class Actions:
             baselines[n]['baseline_config_status'] = state_map.get(f"stream-{b['id']['id']}")
         return result
 
-    def list_commands(self, filters: list = None, limit: int = None, reformat=False):
+    @staticmethod
+    def __reformat_command_simple(result):
+        result = {
+            "name": result["name"],
+            "id": int(result["id"]["id"]),
+            "flowId": result["flowId"],
+            "owner": result["owner"],
+            "last_updated": epoch_time_to_str(result["lastUpdated"] / 1000),
+            "command_status": result["commandStatus"],
+        }
+        return result
+
+    def list_commands(self, filters: list = None, limit: int = None, simple_format=False):
         result = self.__api.list_commands(filters=filters, limit=limit, offset=0)
         _ = self._result_dict_has_schema(result, "result", "data", "data", action_description="list commands", raise_errors=True)
-        results = result["result"]["data"]["data"]
-        if reformat:
-            for n in range(len(results)):
-                results[n] = {
-                    "name": results[n]["name"],
-                    "id": int(results[n]["id"]["id"]),
-                    "flowId": results[n]["flowId"],
-                    "owner": results[n]["owner"],
-                    "last_updated": epoch_time_to_str(results[n]["lastUpdated"] / 1000),
-                    "commandStatus": results[n]["commandStatus"],
-                }
+        results = result["result"]["data"]
+        self.log.debug(f"{len(results)} commands found")
+        if simple_format:
+            results = [self.__reformat_command_simple(r) for r in results['data']]
         return results
 
     def list_connections(self, filters=None, add_status=False):
@@ -338,10 +343,31 @@ class Actions:
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list user groups", raise_errors=True)
         return result["result"]
 
-    def list_users(self, hide_inactive=False):
+    @staticmethod
+    def __reformat_user_simple(user: dict):
+        groups = [g['name'] for g in user['groups'] if not g.get("isDeleted", False)]
+        user_attributes = {
+            "username": user.get("name"),
+            "is_admin": user["role"]["value"] == "admin",
+            "groups": ', '.join(groups),
+            "email": user.get("email"),
+            "is_deleted": user.get("isDeleted"),
+            "is_enabled": user.get("isEnabled"),
+            "auth_type": user.get("authenticationType"),
+            "id": user.get("userId"),
+        }
+        # would it be beneficial to make a class object for these instead of returning a dict?
+        return user_attributes
+
+    # ToDo Check whether the LogicHub integration sets hide_inactive. If it won't be impacted, change the default to True.
+    def list_users(self, hide_inactive=False, simple_format=False):
         result = self.__api.list_users(hide_inactive=hide_inactive)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list users", raise_errors=True)
-        return result["result"]
+        results = result["result"]
+        self.log.debug(f"{len(results['data'])} users found")
+        if simple_format:
+            results = [self.__reformat_user_simple(result) for result in results['data']]
+        return results
 
     def list_workflows(self):
         result = self.__api.list_workflows()
