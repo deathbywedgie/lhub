@@ -875,6 +875,22 @@ class LogicHubAPI:
         response = self._http_request(method="POST", url=self.url.streams, body=body_dict, headers=headers, params=params)
         return response.json()
 
+    def list_users(self, limit=None, hide_inactive=False):
+        limit = limit if limit and isinstance(limit, int) else 99999
+        params = {"pageSize": limit, "after": 0}
+        body = {"filters": []}
+        if hide_inactive:
+            body['filters'].append({"hideInactive": True})
+        self.log.debug("Fetching users")
+        response = self._http_request(
+            url=self.url.users,
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            params=params,
+            body=body
+        )
+        return response.json()
+
     def list_workflows(self):
         self.log.debug("Fetching workflows")
         response = self._http_request(method="GET", url=self.url.case_status_list_workflows)
@@ -986,22 +1002,6 @@ class LogicHubAPI:
         self.log.debug("Fetching user groups")
         response = self._http_request(
             url=self.url.user_groups,
-            method="POST",
-            headers={"Content-Type": "application/json"},
-            params=params,
-            body=body
-        )
-        return response.json()
-
-    def list_users(self, limit=None, hide_inactive=False):
-        limit = limit if limit and isinstance(limit, int) else 99999
-        params = {"pageSize": limit, "after": 0}
-        body = {"filters": []}
-        if hide_inactive:
-            body['filters'].append({"hideInactive": True})
-        self.log.debug("Fetching users")
-        response = self._http_request(
-            url=self.url.users,
             method="POST",
             headers={"Content-Type": "application/json"},
             params=params,
