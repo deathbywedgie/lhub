@@ -19,7 +19,7 @@ class Actions:
         # If this class has not been given a logger by the time it is instantiated, inherit the same one from LogicHubAPI
         self.log = self.log or self.__api.log
 
-    def _reformat_cmd_results(self, response_dict, drop_hidden_columns=True):
+    def __reformat_cmd_results(self, response_dict, drop_hidden_columns=True):
         full_result = response_dict.copy()
 
         result_raw = full_result["result"]
@@ -97,7 +97,7 @@ class Actions:
         if not reformat:
             return response
 
-        response, _ = self._reformat_cmd_results(response)
+        response, _ = self.__reformat_cmd_results(response)
         return response
 
     @staticmethod
