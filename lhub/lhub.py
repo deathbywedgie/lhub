@@ -6,9 +6,10 @@ from .api import LogicHubAPI
 from .log import Logger
 from .common.helpers import format_notebook_ids
 from .common.time import epoch_time_to_str
+from exceptions.app import BaseAppError
+from exceptions.validation import InputValidationError, ResponseValidationError
+from exceptions.formatting import InvalidWorkflowIdFormat
 
-
-# ToDo look for all non-lhub exceptions and see if they need to be updated
 
 class Actions:
     log = None
@@ -63,7 +64,7 @@ class Actions:
                 if raise_errors is True:
                     action_description = f" [{action_description}]" if action_description else ''
                     err_msg = f"Response{action_description} did not match the expected JSON schema. Missing expected key: {field}"
-                    raise ValueError(err_msg)
+                    raise ResponseValidationError(input_var=err_msg, message=action_description)
                 return False
             _dict = _dict[field]
         return True
@@ -182,7 +183,7 @@ class Actions:
         if isinstance(workflow_id, str):
             workflow_id = re.findall(r"(\d+)", workflow_id)
             if not workflow_id:
-                raise ValueError("Invalid Workflow ID: no numeric value found")
+                raise InvalidWorkflowIdFormat(input_var=workflow_id)
             workflow_id = workflow_id[0]
         workflow_id = int(workflow_id)
         result = self.__api.get_workflow_by_id(workflow_id=workflow_id)
@@ -241,7 +242,7 @@ class Actions:
             connection_id = str(connection["id"]["id"])
             connection["status"] = statuses.get(connection_id)
             if not connection["status"]:
-                raise ValueError(f"Connection ID {connection_id} missing from status list")
+                raise BaseAppError(f"Connection ID {connection_id} missing from status list")
         return result
 
     def list_custom_lists(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = None):
@@ -407,7 +408,7 @@ class Actions:
             if fetch_details == 'simple':
                 simple_format = True
             elif fetch_details != 'standard':
-                raise ValueError(f'Invalid input for fetch_details: {fetch_details}')
+                raise InputValidationError(input_var=fetch_details, action_description="fetch_details")
         query = query.strip() if query and query.strip() else ""
         result = self.__api.alerts_search_advanced(query=query, limit=limit)
         _ = self._result_dict_has_schema(result, "result", action_description="search alerts", raise_errors=True)
