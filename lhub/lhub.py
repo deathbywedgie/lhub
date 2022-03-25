@@ -19,25 +19,6 @@ class Actions:
         # If this class has not been given a logger by the time it is instantiated, inherit the same one from LogicHubAPI
         self.log = self.log or self.__api.log
 
-    def __reformat_cmd_results(self, response_dict, drop_hidden_columns=True):
-        full_result = response_dict.copy()
-
-        result_raw = full_result["result"]
-        warnings = full_result["result"].get("warnings")
-        result_with_schema = result_raw["rows"]["data"]
-
-        # execution_ids = [x["id"] for x in result_with_schema]
-
-        if drop_hidden_columns:
-            result_output = [{k: v for k, v in _result['fields'].items() if k not in ["lhub_id", "lhub_page_num"]} for _result in result_with_schema]
-        else:
-            result_output = [{k: v for k, v in _result['fields'].items()} for _result in result_with_schema]
-
-        for _warning in warnings:
-            self.log.debug(f"WARNING RETURNED: {_warning}")
-
-        return result_output, warnings
-
     @staticmethod
     def __enrich_alert_data(alert: dict, included_standard_fields=None, included_additional_fields=None):
         # Verify and sanitize inputs
@@ -91,6 +72,21 @@ class Actions:
     def playbook_ids(self):
         response = self.list_playbooks()
         return {p["id"]["id"]: p["name"] for p in response}
+
+    def __reformat_cmd_results(self, response_dict, drop_hidden_columns=True):
+        full_result = response_dict.copy()
+        result_raw = full_result["result"]
+        warnings = full_result["result"].get("warnings")
+        result_with_schema = result_raw["rows"]["data"]
+
+        if drop_hidden_columns:
+            result_output = [{k: v for k, v in _result['fields'].items() if k not in ["lhub_id", "lhub_page_num"]} for _result in result_with_schema]
+        else:
+            result_output = [{k: v for k, v in _result['fields'].items()} for _result in result_with_schema]
+
+        for _warning in warnings:
+            self.log.debug(f"WARNING RETURNED: {_warning}")
+        return result_output, warnings
 
     def execute_command(self, command_name, input_dict, reformat=True, result_limit=None):
         response = self.__api.execute_command({"command": command_name, "parameterValues": input_dict, "limit": result_limit})
