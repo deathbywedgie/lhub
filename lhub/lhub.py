@@ -20,7 +20,7 @@ class Actions:
         self.log = self.log or self.__api.log
 
     @staticmethod
-    def _reformat_alert_simple(alert: dict):
+    def __reformat_alert_simple(alert: dict):
         if not alert:
             return {}
         alert = deepcopy(alert)
@@ -134,7 +134,7 @@ class Actions:
 
         # Simplify mapped and additional field output
         if simple_format:
-            output = self._reformat_alert_simple(output)
+            output = self.__reformat_alert_simple(output)
         return output
 
     def get_batch_results_by_id(self, batch_id: int, limit=1000, keep_additional_info=False):
