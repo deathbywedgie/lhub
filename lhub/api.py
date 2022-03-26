@@ -936,7 +936,9 @@ class LogicHubAPI:
         _ = self.cases_get_prefix()
         return self.case_prefix
 
-    # ToDo Revisit eventually. Aborted on 2022-02-22 because it turns out this can be set w/ the case management integration as a custom field
+    # ToDo Revisit eventually. Aborted on 2022-02-22 because it turns out this
+    #  can be set w/ the case management integration as a custom field, but
+    #  there is still value in finishing this.
     # def case_link_alerts(self, case_id, alert_ids):
     #     if not isinstance(alert_ids, list):
     #         alert_ids = [alert_ids]

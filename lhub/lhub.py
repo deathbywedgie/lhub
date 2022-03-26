@@ -102,10 +102,6 @@ class Actions:
         if not alert:
             return {}
         alert = deepcopy(alert)
-        # From this: {"displayName": "batch_start_millis", "value": "1632146400000"}
-        # To this: {"batch_start_millis": "1632146400000"}
-        # ToDo 2022-03-09, research further and verify since m92: the step below causes a failure now, and it looks like it's because the alert API is returning cleaner results now
-        # alert['additionalFields'] = {x['displayName']: x['value'] for x in alert.get('additionalFields', {}) if x.get('displayName')}
 
         # From this: {"caseFieldId": "field-17", "displayName": "Alert Context", "fieldType": "Text", "value": "mdr_test"}
         # To this: {"Alert Context": "mdr_test"}
