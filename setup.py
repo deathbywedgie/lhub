@@ -14,8 +14,12 @@ setup(
         "requests",
         "multipledispatch",
     ],
-    keywords=["python", "lhub", "LogicHub"],
+    keywords=["python", "lhub", "LogicHub", "api", "security"],
 
+    url="https://github.com/deathbywedgie/lhub",
+    project_urls={
+        "Bug Tracker": "https://github.com/deathbywedgie/lhub/issues",
+    },
     # https://pypi.org/classifiers/
     classifiers=[
         "Development Status :: 3 - Alpha",
