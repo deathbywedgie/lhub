@@ -485,21 +485,12 @@ class LogicHubAPI:
 
     def get_stream_by_id(self, stream_id: int):
         headers = {"Accept": "application/json"}
-        # ToDo Revisit this. A better approach might be:
-        # try:
-        #     self.log.debug("Fetching stream")
-        #     response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers)
-        #     return response.json()
-        # except HTTPError:
-        #     if self.last_response_status == 400 and 'Cannot find entity for id StreamId' in self.last_response_text:
-        #         raise exceptions.app.StreamNotFound(stream_id)
         self.log.debug("Fetching stream")
         response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers, test_response=False)
-        try:
+        if response.status_code == 400 and 'Cannot find entity for id StreamId' in response.text:
+            raise exceptions.app.StreamNotFound(stream_id)
+        else:
             response.raise_for_status()
-        except HTTPError:
-            if response.status_code == 400 and 'Cannot find entity for id StreamId' in response.text:
-                raise exceptions.app.StreamNotFound(stream_id)
         return response.json()
 
     def get_version_info(self):
