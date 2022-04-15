@@ -167,7 +167,6 @@ class Actions:
         _ = self._result_dict_has_schema(response, "result", action_description="get notebooks from case", raise_errors=True)
         return response.get('result', [])
 
-    # ToDo This finally works as of m91. Add an action for it.
     def get_stream_by_id(self, stream_id: int):
         result = self.__api.get_stream_by_id(stream_id)
         return result["result"]
