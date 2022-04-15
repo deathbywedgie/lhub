@@ -220,6 +220,11 @@ class URLs:
         return f"{self.base}/api/user-management/user-group/search"
 
     @property
+    def user(self):
+        # For setting user preferences, not for fetching them. To fetch them, use the "me" call (/api/user-management/me)
+        return f"{self.base}/api/user-management/user/{{}}"
+
+    @property
     def users(self):
         return f"{self.base}/api/user-management/user/search"
 

@@ -427,6 +427,27 @@ class Actions:
         _ = self._result_dict_has_schema(result, "result", action_description="resume stream", raise_errors=True, accept_null=True)
         return result
 
+    def update_current_user_preferences(self, **kwargs):
+        kwargs = {k: v for k, v in kwargs.items() if v is not None}
+        if not kwargs:
+            raise InputValidationError(
+                input_var=kwargs, action_description="updating user preferences",
+                message=f"Invalid input for updating user preferences. At least one ID with boolean value is required, but none were received."
+            )
+        for k, v in kwargs.items():
+            if not isinstance(v, bool):
+                raise InputValidationError(input_var=v, action_description="updating user preference", message=f"Invalid input for updating user preferences. Preference values must be boolean but received: {v}")
+        preferences = self.__api.me()['result']['preferences']
+        preference_ids = [p['id'] for p in preferences]
+        for k in kwargs:
+            if k not in preference_ids:
+                raise InputValidationError(input_var=k, action_description="updating user preference", message=f"Invalid preference ID: {k}. Valid IDs are: {', '.join(preference_ids)}")
+        for n in range(len(preferences)):
+            if preferences[n]['id'] in kwargs:
+                preferences[n]['value'] = kwargs[preferences[n]['id']]
+
+        return self.__api.update_current_user_preferences(preferences)
+
 
 class LogicHub:
     verify_ssl = True
