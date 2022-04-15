@@ -22,7 +22,6 @@ def format_alert_id(var):
     return __id_string_to_int(var, formatting.InvalidAlertIdFormat(input_var=var))
 
 
-# ToDo Put this to use in api & lhub
 @dispatch(Number)
 def format_case_id(var):
     return int(var)
