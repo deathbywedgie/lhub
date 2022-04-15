@@ -352,8 +352,7 @@ class Actions:
         # would it be beneficial to make a class object for these instead of returning a dict?
         return user_attributes
 
-    # ToDo Check whether the LogicHub integration sets hide_inactive. If it won't be impacted, change the default to True.
-    def list_users(self, hide_inactive=False, simple_format=False):
+    def list_users(self, hide_inactive=True, simple_format=False):
         result = self.__api.list_users(hide_inactive=hide_inactive)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list users", raise_errors=True)
         results = result["result"]
