@@ -85,6 +85,7 @@ class LogicHubAPI:
             self.__credentials = {"email": self.__username, "password": self.__password}
 
         self.url = URLs(hostname)
+        # Update the version attribute in self.url for use in other calls since the URLs class does not make any such calls on its own
         self.url._version = self.version
         _ = atexit.register(self.close)
 
@@ -146,8 +147,7 @@ class LogicHubAPI:
             self.log.debug(f"LogicHub version: m{self.__version}")
         return self.__version.value
 
-    @version.setter
-    def version(self, value):
+    def __set_version(self, value):
         self.__version = cached_obj(int(time.time()), value)
 
     @property
@@ -171,7 +171,7 @@ class LogicHubAPI:
         if not self.__user_id:
             _ = self.me()
         return self.__user_id
-    
+
     @property
     def session_user_role(self):
         if not self.__user_role:
@@ -515,7 +515,7 @@ class LogicHubAPI:
         else:
             # Update version information any time this api call is run successfully
             self.version_info = response_dict
-            self.version = float(re.match("m(.*)", self.version_info["version"]).group(1))
+            self.__set_version = float(re.match("m(.*)", self.version_info["version"]).group(1))
         return response_dict
 
     def get_workflow_by_id(self, workflow_id: int):
