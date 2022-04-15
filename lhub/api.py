@@ -515,7 +515,7 @@ class LogicHubAPI:
         else:
             # Update version information any time this api call is run successfully
             self.version_info = response_dict
-            self.__set_version = float(re.match("m(.*)", self.version_info["version"]).group(1))
+            self.__set_version(float(re.match("m(.*)", self.version_info["version"]).group(1)))
         return response_dict
 
     def get_workflow_by_id(self, workflow_id: int):
