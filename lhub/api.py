@@ -34,6 +34,9 @@ class LogicHubAPI:
     __case_prefix = None
     __fields = None
     __notebooks = None
+    __hostname = None
+    __user_id = None
+    __user_role = None
 
     # Variables used only for API token auth
     __api_key = None
@@ -46,12 +49,16 @@ class LogicHubAPI:
     __session_cookie = None
 
     def __init__(self, hostname, api_key=None, username=None, password=None, verify_ssl=True, cache_seconds=None, default_timeout=None, **kwargs):
-        # First store key variables and then determine whether they are valid
-        self.__api_key = api_key.strip() if api_key else None
-        self.__username = username.strip() if username else None
-        self.__password = password.strip() if password else None
-        assert api_key or (username and password), "Must provide either an API key or a username and password"
-        assert not (api_key and password), "Using both an API token and a password is not supported"
+        if not hostname:
+            raise exceptions.validation.InputValidationError(input_var=None, action_description="instantiation", message="No hostname provided")
+        if not api_key and not (username and password):
+            raise exceptions.validation.InputValidationError(input_var=None, action_description="instantiation", message="Must provide either an API key or a username and password")
+        if api_key and password:
+            raise exceptions.validation.InputValidationError(input_var=None, action_description="instantiation", message="Using both an API token and a password is not supported")
+        self.__hostname = hostname
+        self.__api_key = api_key or None
+        self.__username = username or None
+        self.__password = password or None
 
         self.cache_seconds = int(cache_seconds or LogicHubAPI.DEFAULT_CACHE_SECONDS)
         if self.cache_seconds is None or self.cache_seconds < 0:
@@ -148,6 +155,28 @@ class LogicHubAPI:
         if not self.__get_cached_object(self.__case_prefix):
             _ = self.cases_get_prefix()
         return self.__case_prefix.value
+
+    @property
+    def session_hostname(self):
+        return self.__hostname
+
+    @property
+    def session_username(self):
+        if not self.__username:
+            _ = self.me()
+        return self.__username
+
+    @property
+    def session_user_id(self):
+        if not self.__user_id:
+            _ = self.me()
+        return self.__user_id
+    
+    @property
+    def session_user_role(self):
+        if not self.__user_role:
+            _ = self.me()
+        return self.__user_role
 
     @case_prefix.setter
     def case_prefix(self, value):
@@ -928,8 +957,34 @@ class LogicHubAPI:
         return response.json()
 
     def me(self):
-        self.log.debug("Fetching \"me\" page")
+        self.log.debug("Fetching current user info")
         response = self._http_request(method="GET", url=self.url.me, timeout=30)
+        result = response.json()
+        if not all((
+            result.get('result'),
+            result['result']['id'],
+            result['result']['username'],
+            result['result']['role'],
+            result['result']['preferences']
+        )):
+            raise exceptions.validation.ResponseValidationError(input_var=response, message="API response does not match the expected schema for user profile and preferences")
+
+        self.__user_role = result['result']['role']
+        if result['result']:
+            new_id = result['result']['id']
+            if isinstance(new_id, str):
+                new_id = int(re.sub(r'\D+', '', new_id))
+            if new_id != self.__user_id:
+                self.__user_id = new_id
+            # Username will only exist already if password auth is used. In case of API token auth, capture and record the username.
+            if self.__username != result['result']['username']:
+                self.__username = result['result']['username']
+                self.log.debug(f"Current user updated to {self.__username} [ID: {self.__user_id}, role: {result['result']['role']}]")
+        return result
+
+    def update_current_user_preferences(self, preferences):
+        self.log.debug("Patching user (updating preferences)")
+        response = self._http_request(method="PATCH", url=self.url.user.format(self.session_user_id), body={"preferences": preferences})
         return response.json()
 
     def case_prefix_refresh(self):
