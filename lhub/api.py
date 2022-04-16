@@ -147,6 +147,14 @@ class LogicHubAPI:
             self.log.debug(f"LogicHub version: m{self.__version}")
         return self.__version.value
 
+    @property
+    def major_version(self):
+        return int(float(self.version))
+
+    @property
+    def minor_version(self):
+        return int(re.sub(r'^.*?(\d+)$', '$1', self.version))
+
     def __set_version(self, value):
         self.__version = cached_obj(int(time.time()), value)
 
