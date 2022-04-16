@@ -1,8 +1,23 @@
-class URLs:
-    _version = 0
+from .common.helpers import format_version
 
-    def __init__(self, server_name):
-        self.server_name = str(server_name).lower().strip()
+
+class URLs:
+    __version = None
+
+    def __init__(self, server_name, init_version=None):
+        self.server_name = server_name.lower().strip()
+        if init_version:
+            self._current_version = init_version
+
+    @property
+    def _current_version(self):
+        if self.__version:
+            return int(float(self.__version))
+        return self.__version
+
+    @_current_version.setter
+    def _current_version(self, val):
+        self.__version = format_version(val)
 
     @property
     def base(self):
@@ -126,7 +141,7 @@ class URLs:
     @property
     def event_types(self):
         # Not sure when the old one changed, but it doesn't work in 70
-        if self._version < 70:
+        if self._current_version < 70:
             return f"{self.base}/api/eventtype-flowrefs"
         return f"{self.base}/api/content-management/content/eventType"
 

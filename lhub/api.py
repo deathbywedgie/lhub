@@ -84,9 +84,9 @@ class LogicHubAPI:
             self.auth_type = 'password'
             self.__credentials = {"email": self.__username, "password": self.__password}
 
-        self.url = URLs(hostname)
-        # Update the version attribute in self.url for use in other calls since the URLs class does not make any such calls on its own
-        self.url._version = self.version
+        __init_version = self.kwargs.pop('init_version', None)
+        self.url = URLs(hostname, init_version=__init_version)
+        self.__set_version(__init_version)
         _ = atexit.register(self.close)
 
     def __enter__(self):
@@ -144,7 +144,6 @@ class LogicHubAPI:
     def version(self):
         if not self.__get_cached_object(self.__version):
             _ = self.get_version_info()
-            self.log.debug(f"LogicHub version: m{self.__version}")
         return self.__version.value
 
     @property
@@ -156,7 +155,13 @@ class LogicHubAPI:
         return int(re.sub(r'^.*?(\d+)$', '$1', self.version))
 
     def __set_version(self, value):
-        self.__version = cached_obj(int(time.time()), value)
+        if value is None:
+            _ = self.get_version_info()
+            return
+        self.__version = cached_obj(int(time.time()), helpers.format_version(value))
+        self.log.debug(f"LogicHub version: {self.version}")
+        # Update the version attribute in self.url for use in other calls since the URLs class does not make any such calls on its own
+        self.url._current_version = self.version
 
     @property
     def case_prefix(self):
@@ -514,7 +519,7 @@ class LogicHubAPI:
         else:
             # Update version information any time this api call is run successfully
             self.version_info = response_dict
-            self.__set_version(float(re.match("m(.*)", self.version_info["version"]).group(1)))
+            self.__set_version(self.version_info)
         return response_dict
 
     def get_workflow_by_id(self, workflow_id: int):
@@ -758,7 +763,7 @@ class LogicHubAPI:
         """
         limit = int(limit if limit and limit > 0 else 999999999)
         # ToDo Remove this old version when it's safe to assume no one still uses m70
-        if self.version < 70:
+        if self.major_version < 70:
             return self.__list_event_types_v1(limit=limit)
         return self.__list_event_types_v2(limit=limit)
 
