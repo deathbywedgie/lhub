@@ -113,6 +113,8 @@ def format_version(var):
 def format_version(var):
     if re.match(r'^m?[\d.]+$', var):
         return var.replace('m', '')
+    else:
+        raise formatting.InvalidVersionFormat(input_var=var)
 
 
 @dispatch(dict)
