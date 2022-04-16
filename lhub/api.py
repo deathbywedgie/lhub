@@ -978,7 +978,7 @@ class LogicHubAPI:
             # Username will only exist already if password auth is used. In case of API token auth, capture and record the username.
             if self.__username != result['result']['username']:
                 self.__username = result['result']['username']
-                self.log.debug(f"Current user updated to {self.__username} [ID: {self.__user_id}, role: {result['result']['role']}]")
+                self.log.debug(f"Current user updated to {self.__username} [ID: {self.__user_id}, role: {self.__user_role}]")
         return result
 
     def update_current_user_preferences(self, preferences):
