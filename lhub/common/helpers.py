@@ -119,7 +119,7 @@ def format_version(var):
 
 @dispatch(dict)
 def format_version(var):
-    return format_version(re.match("m(.*)", var["version"]).group(1))
+    return format_version(var["version"])
 
 
 def sanitize_input_rule_field_mappings(field_mappings):
