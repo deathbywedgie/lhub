@@ -104,6 +104,24 @@ def format_stream_id(var):
     return __id_string_to_int(var, formatting.InvalidStreamIdFormat(input_var=var))
 
 
+@dispatch(Number)
+def format_version(var):
+    return str(var)
+
+
+@dispatch(str)
+def format_version(var):
+    if re.match(r'^m?\d+\.\d+$', var):
+        return var.replace('m', '')
+    else:
+        raise formatting.InvalidVersionFormat(input_var=var)
+
+
+@dispatch(dict)
+def format_version(var):
+    return format_version(var["version"])
+
+
 def sanitize_input_rule_field_mappings(field_mappings):
     if not isinstance(field_mappings, dict):
         try:

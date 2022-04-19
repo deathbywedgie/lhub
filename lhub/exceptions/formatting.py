@@ -108,6 +108,18 @@ class InvalidStreamIdFormat(BaseFormatError):
         super().__init__(self.message, *args, **kwargs)
 
 
+class InvalidVersionFormat(BaseFormatError):
+    """Invalid format for Stream IDs"""
+    __default_message = 'Invalid format for product version'
+
+    def __init__(self, input_var, message=None, *args, **kwargs):
+        self.input = input_var
+        if self.input:
+            self.__default_message += f": \"{self.input}\""
+        self.message = message or self.__default_message
+        super().__init__(self.message, *args, **kwargs)
+
+
 class InvalidWorkflowIdFormat(BaseFormatError):
     """Invalid format for Stream IDs"""
     __default_message = 'Invalid format for workflow ID'
