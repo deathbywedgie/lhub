@@ -1004,7 +1004,7 @@ class LogicHubAPI:
     #
     #     case_id = helpers.format_case_id_with_prefix(case_id, self.case_prefix)
     #
-    #     field_id = self.system_field_lh_linked_alerts.get('id')
+    #     field_id = self.formatted.system_field_lh_linked_alerts.get('id')
     #     body = {"fields": [{"id": field_id, "value": alert_ids}]}
     #     self.log.debug("Linking alert to case")
     #     response = self._http_request(
