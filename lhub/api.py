@@ -88,6 +88,7 @@ class LogicHubAPI:
         self.url = URLs(hostname, init_version=__init_version)
         self.__set_version(__init_version)
         _ = atexit.register(self.close)
+        self.formatted = FormattedObjects(api=self)
 
     def __enter__(self):
         return self
@@ -1137,3 +1138,49 @@ class LogicHubAPI:
         self.log.debug("Resuming stream")
         response = self._http_request(method="POST", url=self.url.stream_resume, body=body, **kwargs)
         return response.json()
+
+
+class FormattedObjects:
+    def __init__(self, api: LogicHubAPI):
+        self.__api = api
+
+    @property
+    def user_groups(self):
+        groups = self.__api.list_user_groups(limit=None, hide_inactive=True)['result']['data']
+        # convert the group ID to an int, rename field to 'id', and stick back at the top of the dict
+        return [dict(**{'id': helpers.format_user_id(groups[n])}, **groups[n]) for n in range(len(groups))]
+
+    @property
+    def user_groups_by_id(self):
+        return {g['usersGroupId']: g for g in self.user_groups}
+
+    @property
+    def user_groups_by_name(self):
+        return {g['name']: g for g in self.user_groups}
+
+    @property
+    def user_groups_simple(self):
+        return [{k: v for k, v in g.items() if k != 'entityTypePermissions'} for g in self.user_groups]
+
+    @property
+    def user_groups_simple_by_id(self):
+        return {g['id']: g for g in self.user_groups_simple}
+
+    @property
+    def user_groups_simple_by_name(self):
+        return {g['name']: g for g in self.user_groups_simple}
+
+    @property
+    def users(self):
+        response = self.__api.list_users(limit=None, hide_inactive=True)
+        return response['result']['data']
+
+    @property
+    def users_by_id(self):
+        users = self.users
+        return {u['userId']: u for u in users}
+
+    @property
+    def users_by_name(self):
+        users = self.users
+        return {u['name']: u for u in users}
