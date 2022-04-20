@@ -135,13 +135,6 @@ class LogicHubAPI:
         self.__fields = cached_obj(int(time.time()), value)
 
     @property
-    def system_field_lh_linked_alerts(self):
-        for f in self.fields:
-            if f.get('fieldName') == 'lh_linked_alerts':
-                return f
-        raise exceptions.validation.VersionMinimumNotMet(min_version='m86', feature_label='linked alerts')
-
-    @property
     def version(self):
         if not self.__get_cached_object(self.__version):
             _ = self.get_version_info()
@@ -1143,6 +1136,17 @@ class LogicHubAPI:
 class FormattedObjects:
     def __init__(self, api: LogicHubAPI):
         self.__api = api
+
+    @property
+    def system_field_lh_linked_alerts(self):
+        for f in self.__api.fields['result']['data']:
+            if f.get('fieldName') == 'lh_linked_alerts':
+                return f
+        raise exceptions.validation.VersionMinimumNotMet(min_version='m86', feature_label='linked alerts')
+
+    @property
+    def system_field_lh_linked_alerts_id(self):
+        return int(self.system_field_lh_linked_alerts['id'].replace('field-', ''))
 
     @property
     def user_groups(self):
