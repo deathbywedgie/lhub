@@ -2,7 +2,7 @@ from .base import LhBaseException
 from requests.exceptions import HTTPError
 
 
-class BaseAppError(LhBaseException, HTTPError):
+class BaseAppError(LhBaseException):
     """Base exception for failures from interacting with LogicHub itself, including custom HTTP errors"""
 
     def __init__(self, message=None, *args, **kwargs):
