@@ -87,7 +87,6 @@ class LogicHubAPI:
         __init_version = self.kwargs.pop('init_version', None)
         self.url = URLs(hostname, init_version=__init_version)
         self.__set_version(__init_version)
-        _ = atexit.register(self.close)
         self.formatted = FormattedObjects(api=self)
 
     def __enter__(self):
@@ -312,6 +311,7 @@ class LogicHubAPI:
         login_response = self._http_request(url=self.url.login, method="POST", body=self.__credentials, timeout=self._http_timeout_login, reauth=False)
         self.session_cookie = login_response.cookies.get("PLAY_SESSION")
         self.log.debug("Login successful")
+        _ = atexit.register(self.close)
 
     def logout(self):
         self.log.debug("Logout requested")
