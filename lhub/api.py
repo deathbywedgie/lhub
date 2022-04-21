@@ -1152,7 +1152,7 @@ class FormattedObjects:
     def user_groups(self):
         groups = self.__api.list_user_groups(limit=None, hide_inactive=True)['result']['data']
         # convert the group ID to an int, rename field to 'id', and stick back at the top of the dict
-        return [dict(**{'id': helpers.format_user_id(groups[n])}, **groups[n]) for n in range(len(groups))]
+        return [dict(**{'id': helpers.format_user_group_id(groups[n])}, **groups[n]) for n in range(len(groups))]
 
     @property
     def user_groups_by_id(self):
