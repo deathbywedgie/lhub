@@ -1132,6 +1132,22 @@ class LogicHubAPI:
         response = self._http_request(method="POST", url=self.url.stream_resume, body=body, **kwargs)
         return response.json()
 
+    def create_user(self, username, email, authentication_type, group_ids: list):
+        body = {
+            "username": username,
+            "email": email,
+            "userGroupIds": group_ids,
+            "authenticationType": authentication_type or "password"
+        }
+        self.log.debug(f"Creating user: {username}")
+        response = self._http_request(method="POST", url=self.url.user_create, body=body)
+        return response.json()
+
+    def delete_user(self, user_ids: list):
+        self.log.debug(f"Deleting users by id: {', '.join([str(i) for i in user_ids])}")
+        response = self._http_request(method="POST", url=self.url.user_delete, body=user_ids)
+        return response.json()
+
 
 class FormattedObjects:
     def __init__(self, api: LogicHubAPI):
@@ -1182,7 +1198,7 @@ class FormattedObjects:
     @property
     def users_by_id(self):
         users = self.users
-        return {u['userId']: u for u in users}
+        return {helpers.format_user_id(u): u for u in users}
 
     @property
     def users_by_name(self):
