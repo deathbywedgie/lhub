@@ -86,6 +86,7 @@ class LogicHubAPI:
 
         __init_version = self.kwargs.pop('init_version', None)
         self.url = URLs(hostname, init_version=__init_version)
+        self.log.debug(f"Starting session for server: {self.session_hostname}")
         self.__set_version(__init_version)
         self.formatted = FormattedObjects(api=self)
 
