@@ -4,9 +4,9 @@ from copy import deepcopy
 
 from .api import LogicHubAPI
 from .log import Logger
-from .common.helpers import format_notebook_ids
+from .common import helpers
 from .common.time import epoch_time_to_str
-from .exceptions.app import BaseAppError
+from .exceptions.app import BaseAppError, UserGroupNotFound, UserNotFound
 from .exceptions.validation import InputValidationError, ResponseValidationError
 from .exceptions.formatting import InvalidWorkflowIdFormat
 
@@ -371,7 +371,7 @@ class Actions:
     def attach_notebooks_to_case(self, case_id, notebook_ids):
         current_notebooks = self.__api.case_list_attached_notebooks(case_id, results_only=True)
         current_notebooks = [notebook['id'] for notebook in current_notebooks]
-        new_notebooks = format_notebook_ids(notebook_ids)
+        new_notebooks = helpers.format_notebook_ids(notebook_ids)
         updated_notebooks = current_notebooks + [x for x in new_notebooks if x not in current_notebooks]
         if current_notebooks == updated_notebooks:
             return {"result": "no changes made"}
@@ -382,8 +382,8 @@ class Actions:
         if not current_notebooks:
             return {"result": "no changes made"}
         # Reformat to match
-        current_notebooks = format_notebook_ids(current_notebooks)
-        new_notebooks = format_notebook_ids(notebook_ids)
+        current_notebooks = helpers.format_notebook_ids(current_notebooks)
+        new_notebooks = helpers.format_notebook_ids(notebook_ids)
         updated_notebooks = [notebook for notebook in current_notebooks if notebook['id'] not in [x['id'] for x in new_notebooks]]
         if current_notebooks == updated_notebooks:
             return {"result": "no changes made"}
@@ -445,6 +445,53 @@ class Actions:
                 preferences[n]['value'] = kwargs[preferences[n]['id']]
 
         return self.__api.update_current_user_preferences(preferences)
+
+    def create_user(self, username, email, authentication_type=None, group_names: list = None, group_ids: list = None):
+        """
+        Create a new LogicHub user
+
+        :param username:
+        :param email:
+        :param authentication_type:
+        :param group_names: ignored if group_ids is present
+        :param group_ids:
+        :return:
+        """
+        authentication_type = authentication_type or "password"
+        if not group_ids:
+            _groups = self.__api.formatted.user_groups_by_name
+            if group_names:
+                group_ids = []
+                for g in group_names:
+                    if g not in _groups:
+                        raise UserGroupNotFound(input_var=g)
+                    _group_id = helpers.format_user_group_id(_groups[g])
+                    self.log.debug(f"Translated group {g} to ID {_group_id}")
+                    group_ids.append(_group_id)
+            else:
+                group_ids = _groups["Everyone"]
+
+        kwargs = {"username": username, "email": email, "authentication_type": authentication_type, "group_ids": group_ids}
+        self.log.debug(f"Creating user: {json.dumps(kwargs)}")
+        response = self.__api.create_user(**kwargs)
+        return response['result']
+
+    def delete_user_by_id(self, user_ids: (str, list)):
+        if not isinstance(user_ids, list):
+            user_ids = [user_ids]
+        user_ids = [helpers.format_user_id(u) for u in user_ids]
+        return self.__api.delete_user(user_ids=user_ids)
+
+    def delete_user_by_name(self, usernames: (str, list)):
+        _users = self.__api.formatted.users_by_name
+        user_ids = []
+        for u in (usernames if isinstance(usernames, list) else [usernames]):
+            if u not in _users:
+                raise UserNotFound(input_var=u)
+            _user_id = helpers.format_user_id(_users[u])
+            self.log.debug(f"Translated user {u} to ID {_user_id}")
+            user_ids.append(_user_id)
+        return self.delete_user_by_id(user_ids=user_ids)
 
 
 class LogicHub:

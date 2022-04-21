@@ -88,6 +88,7 @@ class LogicHubAPI:
         self.url = URLs(hostname, init_version=__init_version)
         self.__set_version(__init_version)
         _ = atexit.register(self.close)
+        self.formatted = FormattedObjects(api=self)
 
     def __enter__(self):
         return self
@@ -132,13 +133,6 @@ class LogicHubAPI:
     @fields.setter
     def fields(self, value):
         self.__fields = cached_obj(int(time.time()), value)
-
-    @property
-    def system_field_lh_linked_alerts(self):
-        for f in self.fields:
-            if f.get('fieldName') == 'lh_linked_alerts':
-                return f
-        raise exceptions.validation.VersionMinimumNotMet(min_version='m86', feature_label='linked alerts')
 
     @property
     def version(self):
@@ -1010,7 +1004,7 @@ class LogicHubAPI:
     #
     #     case_id = helpers.format_case_id_with_prefix(case_id, self.case_prefix)
     #
-    #     field_id = self.system_field_lh_linked_alerts.get('id')
+    #     field_id = self.formatted.system_field_lh_linked_alerts.get('id')
     #     body = {"fields": [{"id": field_id, "value": alert_ids}]}
     #     self.log.debug("Linking alert to case")
     #     response = self._http_request(
@@ -1137,3 +1131,76 @@ class LogicHubAPI:
         self.log.debug("Resuming stream")
         response = self._http_request(method="POST", url=self.url.stream_resume, body=body, **kwargs)
         return response.json()
+
+    def create_user(self, username, email, authentication_type, group_ids: list):
+        body = {
+            "username": username,
+            "email": email,
+            "userGroupIds": group_ids,
+            "authenticationType": authentication_type or "password"
+        }
+        self.log.debug(f"Creating user: {username}")
+        response = self._http_request(method="POST", url=self.url.user_create, body=body)
+        return response.json()
+
+    def delete_user(self, user_ids: list):
+        self.log.debug(f"Deleting users by id: {', '.join([str(i) for i in user_ids])}")
+        response = self._http_request(method="POST", url=self.url.user_delete, body=user_ids)
+        return response.json()
+
+
+class FormattedObjects:
+    def __init__(self, api: LogicHubAPI):
+        self.__api = api
+
+    @property
+    def system_field_lh_linked_alerts(self):
+        for f in self.__api.fields['result']['data']:
+            if f.get('fieldName') == 'lh_linked_alerts':
+                return f
+        raise exceptions.validation.VersionMinimumNotMet(min_version='m86', feature_label='linked alerts')
+
+    @property
+    def system_field_lh_linked_alerts_id(self):
+        return int(self.system_field_lh_linked_alerts['id'].replace('field-', ''))
+
+    @property
+    def user_groups(self):
+        groups = self.__api.list_user_groups(limit=None, hide_inactive=True)['result']['data']
+        # convert the group ID to an int, rename field to 'id', and stick back at the top of the dict
+        return [dict(**{'id': helpers.format_user_group_id(groups[n])}, **groups[n]) for n in range(len(groups))]
+
+    @property
+    def user_groups_by_id(self):
+        return {g['usersGroupId']: g for g in self.user_groups}
+
+    @property
+    def user_groups_by_name(self):
+        return {g['name']: g for g in self.user_groups}
+
+    @property
+    def user_groups_simple(self):
+        return [{k: v for k, v in g.items() if k != 'entityTypePermissions'} for g in self.user_groups]
+
+    @property
+    def user_groups_simple_by_id(self):
+        return {g['id']: g for g in self.user_groups_simple}
+
+    @property
+    def user_groups_simple_by_name(self):
+        return {g['name']: g for g in self.user_groups_simple}
+
+    @property
+    def users(self):
+        response = self.__api.list_users(limit=None, hide_inactive=True)
+        return response['result']['data']
+
+    @property
+    def users_by_id(self):
+        users = self.users
+        return {helpers.format_user_id(u): u for u in users}
+
+    @property
+    def users_by_name(self):
+        users = self.users
+        return {u['name']: u for u in users}

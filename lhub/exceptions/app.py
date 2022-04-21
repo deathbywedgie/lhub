@@ -2,7 +2,7 @@ from .base import LhBaseException
 from requests.exceptions import HTTPError
 
 
-class BaseAppError(LhBaseException, HTTPError):
+class BaseAppError(LhBaseException):
     """Base exception for failures from interacting with LogicHub itself, including custom HTTP errors"""
 
     def __init__(self, message=None, *args, **kwargs):
@@ -70,3 +70,29 @@ class UnexpectedOutput(BaseAppError):
     def __init__(self, message=None, *args, **kwargs):
         self.message = message or self.__default_message
         super().__init__(*args, **kwargs)
+
+
+class UserGroupNotFound(BaseAppError):
+    """User not found"""
+
+    __default_message = 'User group not found'
+
+    def __init__(self, input_var, message=None, *args, **kwargs):
+        self.input = input_var
+        if self.input:
+            self.__default_message += f": {self.input}"
+        self.message = message or self.__default_message
+        super().__init__(self.message, *args, **kwargs)
+
+
+class UserNotFound(BaseAppError):
+    """User not found"""
+
+    __default_message = 'User not found'
+
+    def __init__(self, input_var, message=None, *args, **kwargs):
+        self.input = input_var
+        if self.input:
+            self.__default_message += f": {self.input}"
+        self.message = message or self.__default_message
+        super().__init__(self.message, *args, **kwargs)

@@ -105,6 +105,36 @@ def format_stream_id(var):
 
 
 @dispatch(Number)
+def format_user_id(var):
+    return int(var)
+
+
+@dispatch(str)
+def format_user_id(var):
+    return __id_string_to_int(var, formatting.InvalidUserIdFormat(input_var=var))
+
+
+@dispatch(dict)
+def format_user_id(var):
+    return format_user_id(var.get('userId'))
+
+
+@dispatch(Number)
+def format_user_group_id(var):
+    return int(var)
+
+
+@dispatch(str)
+def format_user_group_id(var):
+    return __id_string_to_int(var, formatting.InvalidUserIdFormat(input_var=var))
+
+
+@dispatch(dict)
+def format_user_group_id(var):
+    return format_user_group_id(var.get('usersGroupId'))
+
+
+@dispatch(Number)
 def format_version(var):
     return str(var)
 

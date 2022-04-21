@@ -240,6 +240,14 @@ class URLs:
         return f"{self.base}/api/user-management/user/{{}}"
 
     @property
+    def user_create(self):
+        return f"{self.base}/api/user-management/user"
+
+    @property
+    def user_delete(self):
+        return f"{self.base}/api/user-management/user/delete"
+
+    @property
     def users(self):
         return f"{self.base}/api/user-management/user/search"
 

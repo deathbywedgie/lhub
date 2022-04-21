@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-VERSION = '0.1.6.6'
+VERSION = '0.1.6.7'
 
 setup(
     name="lhub",
