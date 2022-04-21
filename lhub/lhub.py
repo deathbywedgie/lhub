@@ -462,19 +462,24 @@ class Actions:
             _groups = self.__api.formatted.user_groups_by_name
             if group_names:
                 group_ids = []
-                for g in _groups:
+                for g in group_names:
                     if g not in _groups:
                         raise UserGroupNotFound(input_var=g)
-                    group_ids.append(_groups[g])
+                    _group_id = helpers.format_user_group_id(_groups[g])
+                    self.log.debug(f"Translated group {g} to ID {_group_id}")
+                    group_ids.append(_group_id)
             else:
                 group_ids = _groups["Everyone"]
 
-        return self.__api.create_user(username=username, email=email, authentication_type=authentication_type, group_ids=group_ids)
+        kwargs = {"username": username, "email": email, "authentication_type": authentication_type, "group_ids": group_ids}
+        self.log.debug(f"Creating user: {json.dumps(kwargs)}")
+        response = self.__api.create_user(**kwargs)
+        return response['result']
 
     def delete_user_by_id(self, user_ids: (str, list)):
         if not isinstance(user_ids, list):
             user_ids = [user_ids]
-        user_ids = [helpers.format_user_id(u) for u in [user_ids]]
+        user_ids = [helpers.format_user_id(u) for u in user_ids]
         return self.__api.delete_user(user_ids=user_ids)
 
     def delete_user_by_name(self, usernames: (str, list)):
@@ -483,8 +488,10 @@ class Actions:
         for u in (usernames if isinstance(usernames, list) else [usernames]):
             if u not in _users:
                 raise UserNotFound(input_var=u)
-            user_ids.append(helpers.format_user_id(_users[u]))
-        return self.__api.delete_user(user_ids=user_ids)
+            _user_id = helpers.format_user_id(_users[u])
+            self.log.debug(f"Translated user {u} to ID {_user_id}")
+            user_ids.append(_user_id)
+        return self.delete_user_by_id(user_ids=user_ids)
 
 
 class LogicHub:
