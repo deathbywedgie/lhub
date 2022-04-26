@@ -86,8 +86,8 @@ class LogicHubAPI:
 
         __init_version = self.kwargs.pop('init_version', None)
         self.url = URLs(hostname, init_version=__init_version)
+        self.log.debug(f"Starting session for server: {self.session_hostname}")
         self.__set_version(__init_version)
-        _ = atexit.register(self.close)
         self.formatted = FormattedObjects(api=self)
 
     def __enter__(self):
@@ -312,6 +312,7 @@ class LogicHubAPI:
         login_response = self._http_request(url=self.url.login, method="POST", body=self.__credentials, timeout=self._http_timeout_login, reauth=False)
         self.session_cookie = login_response.cookies.get("PLAY_SESSION")
         self.log.debug("Login successful")
+        _ = atexit.register(self.close)
 
     def logout(self):
         self.log.debug("Logout requested")
@@ -902,7 +903,7 @@ class LogicHubAPI:
         response = self._http_request(method="POST", url=self.url.streams, body=body_dict, headers=headers, params=params)
         return response.json()
 
-    def list_user_groups(self, limit=None, hide_inactive=False):
+    def list_user_groups(self, limit=None, hide_inactive=True):
         limit = limit if limit and isinstance(limit, int) else 99999
         params = {"pageSize": limit, "after": 0}
         body = {"filters": []}
@@ -918,7 +919,7 @@ class LogicHubAPI:
         )
         return response.json()
 
-    def list_users(self, limit=None, hide_inactive=False):
+    def list_users(self, limit=None, hide_inactive=True):
         limit = limit if limit and isinstance(limit, int) else 99999
         params = {"pageSize": limit, "after": 0}
         body = {"filters": []}
