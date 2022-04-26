@@ -903,7 +903,7 @@ class LogicHubAPI:
         response = self._http_request(method="POST", url=self.url.streams, body=body_dict, headers=headers, params=params)
         return response.json()
 
-    def list_user_groups(self, limit=None, hide_inactive=False):
+    def list_user_groups(self, limit=None, hide_inactive=True):
         limit = limit if limit and isinstance(limit, int) else 99999
         params = {"pageSize": limit, "after": 0}
         body = {"filters": []}
@@ -919,7 +919,7 @@ class LogicHubAPI:
         )
         return response.json()
 
-    def list_users(self, limit=None, hide_inactive=False):
+    def list_users(self, limit=None, hide_inactive=True):
         limit = limit if limit and isinstance(limit, int) else 99999
         params = {"pageSize": limit, "after": 0}
         body = {"filters": []}
