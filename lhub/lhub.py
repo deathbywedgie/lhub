@@ -3,22 +3,20 @@ import re
 from copy import deepcopy
 
 from .api import LogicHubAPI
-from .log import Logger
+from .log import _DefaultLogger
 from .common import helpers
 from .common.time import epoch_time_to_str
 from .exceptions.app import BaseAppError, UserGroupNotFound, UserNotFound
 from .exceptions.validation import InputValidationError, ResponseValidationError
 from .exceptions.formatting import InvalidWorkflowIdFormat
+from logging import RootLogger
 
 
 class Actions:
-    log = None
 
-    def __init__(self, api: LogicHubAPI):
+    def __init__(self, api: LogicHubAPI, logger: RootLogger = None):
         self.__api = api
-
-        # If this class has not been given a logger by the time it is instantiated, inherit the same one from LogicHubAPI
-        self.log = self.log or self.__api.log
+        self.__log = logger or _DefaultLogger
 
     @staticmethod
     def __enrich_alert_data(alert: dict, included_standard_fields=None, included_additional_fields=None):
@@ -86,7 +84,7 @@ class Actions:
             result_output = [{k: v for k, v in _result['fields'].items()} for _result in result_with_schema]
 
         for _warning in warnings:
-            self.log.debug(f"WARNING RETURNED: {_warning}")
+            self.__log.debug(f"WARNING RETURNED: {_warning}")
         return result_output, warnings
 
     def execute_command(self, command_name, input_dict, reformat=True, result_limit=None):
@@ -216,7 +214,7 @@ class Actions:
         result = self.__api.list_commands(filters=filters, limit=limit, offset=0)
         _ = self._result_dict_has_schema(result, "result", "data", "data", action_description="list commands", raise_errors=True)
         results = result["result"]["data"]
-        self.log.debug(f"{len(results)} commands found")
+        self.__log.debug(f"{len(results)} commands found")
         if simple_format:
             results = [self.__reformat_command_simple(r) for r in results['data']]
         return results
@@ -355,7 +353,7 @@ class Actions:
         result = self.__api.list_users(hide_inactive=hide_inactive)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list users", raise_errors=True)
         results = result["result"]
-        self.log.debug(f"{len(results['data'])} users found")
+        self.__log.debug(f"{len(results['data'])} users found")
         if simple_format:
             results = [self.__reformat_user_simple(result) for result in results['data']]
         return results
@@ -466,13 +464,13 @@ class Actions:
                     if g not in _groups:
                         raise UserGroupNotFound(input_var=g)
                     _group_id = helpers.format_user_group_id(_groups[g])
-                    self.log.debug(f"Translated group {g} to ID {_group_id}")
+                    self.__log.debug(f"Translated group {g} to ID {_group_id}")
                     group_ids.append(_group_id)
             else:
                 group_ids = _groups["Everyone"]
 
         kwargs = {"username": username, "email": email, "authentication_type": authentication_type, "group_ids": group_ids}
-        self.log.debug(f"Creating user: {json.dumps(kwargs)}")
+        self.__log.debug(f"Creating user: {json.dumps(kwargs)}")
         response = self.__api.create_user(**kwargs)
         return response['result']
 
@@ -489,7 +487,7 @@ class Actions:
             if u not in _users:
                 raise UserNotFound(input_var=u)
             _user_id = helpers.format_user_id(_users[u])
-            self.log.debug(f"Translated user {u} to ID {_user_id}")
+            self.__log.debug(f"Translated user {u} to ID {_user_id}")
             user_ids.append(_user_id)
         return self.delete_user_by_id(user_ids=user_ids)
 
@@ -499,19 +497,13 @@ class LogicHub:
 
     def __init__(
             self, hostname, api_key=None, username=None, password=None,
-            verify_ssl=True, cache_seconds=None, verify_api_auth=True,
-            logger: Logger = None, log_level=None, default_timeout=None,
-            **kwargs):
-        # If the LogicHubAPI class object has not been given a logger by the time this class is instantiated, set one for it
-        LogicHubAPI.log = LogicHubAPI.log or logger or Logger()
-        if log_level:
-            LogicHubAPI.log.log_level = log_level
-
-        LogicHubAPI.verify_ssl = self.verify_ssl
-
+            cache_seconds=None, verify_api_auth=True, default_timeout=None, **kwargs):
         self.kwargs = kwargs
-        self.api = LogicHubAPI(hostname=hostname, api_key=api_key, username=username, password=password, verify_ssl=verify_ssl, cache_seconds=cache_seconds, default_timeout=default_timeout, **kwargs)
-        self.actions = Actions(self.api)
+        self.__log = kwargs.get('logger', _DefaultLogger)
+        self.api = LogicHubAPI(
+            hostname=hostname, api_key=api_key, username=username, password=password,
+            cache_seconds=cache_seconds, default_timeout=default_timeout, **kwargs)
+        self.actions = Actions(self.api, logger=self.__log)
         if verify_api_auth:
             _ = self._verify_api_auth()
 
