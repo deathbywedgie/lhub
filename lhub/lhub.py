@@ -506,6 +506,7 @@ class LogicHub:
         self.actions = Actions(self.api, logger=self.__log)
         if verify_api_auth:
             _ = self._verify_api_auth()
+        self.__log.debug("LogicHub (lhub) session successfully initialized")
 
     def _verify_api_auth(self):
         _ = self.api.me()
