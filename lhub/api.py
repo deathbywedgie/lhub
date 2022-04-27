@@ -319,7 +319,7 @@ class LogicHubAPI:
         _ = atexit.register(self.close)
 
     def logout(self):
-        self.__log.debug("Logout requested")
+        self.__log.debug(f"Logout requested [{self.session_hostname}]")
         if self.auth_type != 'password':
             raise exceptions.LhBaseException('Login process is only used for password auth')
         if not self.session_cookie:
