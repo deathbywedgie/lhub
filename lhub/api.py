@@ -141,9 +141,7 @@ class LogicHubAPI:
 
     @property
     def version(self):
-        if not self.__get_cached_object(self.__version):
-            _ = self.get_version_info()
-        return self.__version.value
+        return helpers.format_version(self.version_info)
 
     @property
     def major_version(self):
@@ -157,7 +155,6 @@ class LogicHubAPI:
         if value is None:
             _ = self.get_version_info()
             return
-        self.__version = cached_obj(int(time.time()), helpers.format_version(value))
         self.__log.debug(f"LogicHub version: {self.version}")
         # Update the version attribute in self.url for use in other calls since the URLs class does not make any such calls on its own
         self.url._current_version = self.version
