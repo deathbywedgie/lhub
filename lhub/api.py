@@ -580,11 +580,11 @@ class LogicHubAPI:
 
         errors = result_dict.pop("errors", [])
         if errors:
-            log.alert(f"Request was successful, but command failed with errors")
+            log.warning(f"Request was successful, but command failed with errors")
             log.debug(f"Full error list: {json.dumps(errors)}")
             log.debug(f"Other error response data: {json.dumps(result_dict)}")
             try:
-                log.alert(f"Direct link to command: {self.url.command.format(errors[0]['details']['flowId'])}")
+                log.warning(f"Direct link to command: {self.url.command.format(errors[0]['details']['flowId'])}")
             except KeyError:
                 pass
             for error in errors:
