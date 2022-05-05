@@ -11,11 +11,12 @@ import sys
 import time
 
 from . import exceptions
-from .log import _DefaultLogger
+from .log import prep_generic_logger
 from .url import URLs
 from .common import helpers
-from logging import RootLogger
+from logging import getLogger, RootLogger
 
+log = getLogger(__name__)
 cached_obj = namedtuple('CachedObject', ['time', 'value'])
 
 
@@ -51,6 +52,11 @@ class LogicHubAPI:
     def __init__(self, hostname, api_key=None, username=None, password=None,
                  verify_ssl=True, cache_seconds=None, default_timeout=None,
                  logger: RootLogger = None, log_level=None, **kwargs):
+        global log
+        if logger:
+            log = logger
+        else:
+            prep_generic_logger(level=log_level)
         if not hostname:
             raise exceptions.validation.InputValidationError(input_var=None, action_description="instantiation", message="No hostname provided")
         if not api_key and not (username and password):
@@ -66,11 +72,6 @@ class LogicHubAPI:
         if self.cache_seconds is None or self.cache_seconds < 0:
             self.cache_seconds = 0
 
-        self.__log = logger or _DefaultLogger
-        if log_level:
-            self.__log.disabled = False
-            self.__log.setLevel(log_level)
-
         if default_timeout:
             self.http_timeout_default = int(default_timeout)
         self._http_timeout_login = min(self._http_timeout_login, self.http_timeout_default)
@@ -80,7 +81,7 @@ class LogicHubAPI:
             self.verify_ssl = verify_ssl
         if not self.verify_ssl:
             # Disable certificate warnings
-            self.__log.debug("Disabling SSL warnings...")
+            log.debug("Disabling SSL warnings...")
             disable_warnings(InsecureRequestWarning)
 
         if self.__api_key:
@@ -91,7 +92,7 @@ class LogicHubAPI:
 
         __init_version = self.kwargs.pop('init_version', None)
         self.url = URLs(hostname, init_version=__init_version)
-        self.__log.debug(f"Starting session for server: {self.session_hostname}")
+        log.debug(f"Starting session for server: {self.session_hostname}")
         self.__set_version(__init_version)
         self.formatted = FormattedObjects(api=self)
 
@@ -157,7 +158,7 @@ class LogicHubAPI:
             _ = self.get_version_info()
             return
         self.__version = cached_obj(int(time.time()), helpers.format_version(value))
-        self.__log.debug(f"LogicHub version: {self.version}")
+        log.debug(f"LogicHub version: {self.version}")
         # Update the version attribute in self.url for use in other calls since the URLs class does not make any such calls on its own
         self.url._current_version = self.version
 
@@ -291,7 +292,7 @@ class LogicHubAPI:
         if self.auth_type == 'password':
             # if the response fails because the session has ended or the user has logged out, log back in and try once more
             if response.status_code == 401 and reauth and "not logged in" in response.text:
-                self.__log.debug(f"Session expired; logging in and retrying")
+                log.debug(f"Session expired; logging in and retrying")
                 self.login(force_new_session=True)
                 response = request(method=method, url=url, verify=self.verify_ssl, timeout=timeout, cookies=self.cookies, **kwargs)
 
@@ -309,39 +310,39 @@ class LogicHubAPI:
             self.__session_cookie = None
 
         if self.__session_cookie:
-            self.__log.debug("Already logged in; login skipped")
+            log.debug("Already logged in; login skipped")
             return
 
-        self.__log.debug("Logging into LogicHub")
+        log.debug("Logging into LogicHub")
         login_response = self._http_request(url=self.url.login, method="POST", body=self.__credentials, timeout=self._http_timeout_login, reauth=False)
         self.session_cookie = login_response.cookies.get("PLAY_SESSION")
-        self.__log.debug("Login successful")
+        log.debug("Login successful")
         _ = atexit.register(self.close)
 
     def logout(self):
-        self.__log.debug(f"Logout requested [{self.session_hostname}]")
+        log.debug(f"Logout requested [{self.session_hostname}]")
         if self.auth_type != 'password':
             raise exceptions.LhBaseException('Login process is only used for password auth')
         if not self.session_cookie:
-            self.__log.debug("Already logged out; logout skipped")
+            log.debug("Already logged out; logout skipped")
             return
 
-        self.__log.debug("Issuing logout command")
+        log.debug("Issuing logout command")
         _response = self._http_request(url=self.url.logout, method="POST", test_response=False, reauth=False, timeout=self._http_timeout_login)
         try:
             _response.raise_for_status()
         except HTTPError as err:
-            self.__log.warning(f"Logout failed with HTTP error: {str(err)}")
+            log.warning(f"Logout failed with HTTP error: {str(err)}")
         except Exception as err:
-            self.__log.warning(f"Logout failed with UNKNOWN error: {repr(err)}")
+            log.warning(f"Logout failed with UNKNOWN error: {repr(err)}")
         else:
-            self.__log.debug(f"Logout successful")
+            log.debug(f"Logout successful")
             self.session_cookie = None
 
     def close(self):
         """Steps to clean up on exit"""
         if self.auth_type == 'password':
-            self.__log.debug("LogicHubAPI class exiting...")
+            log.debug("LogicHubAPI class exiting...")
             self.logout()
 
     # ToDo Revisit and finish this
@@ -379,7 +380,7 @@ class LogicHubAPI:
         limit = int(limit or 1000)
         offset = int(offset or 0)
         params = {"fields": "*", "pageSize": limit, "after": offset, "cachedOnly": "true"}
-        self.__log.debug("Fetching batch results")
+        log.debug("Fetching batch results")
         response = self._http_request(url=self.url.batch_results_by_id.format(int(batch_id)), params=params)
         return response.json()
 
@@ -399,7 +400,7 @@ class LogicHubAPI:
             "after": int(offset or 0),
         }
         body = {"status": statuses or [], "excludeBatchesWithZeroEvents": exclude_empty_results}
-        self.__log.debug("Fetching batches")
+        log.debug("Fetching batches")
         response = self._http_request(method="POST", url=self.url.stream_batches.format(stream_id), params=params, body=body)
         return response.json()
 
@@ -419,7 +420,7 @@ class LogicHubAPI:
                 connection_list.append(f"connection-{connection}")
 
         headers = {"Content-Type": "application/json"}
-        self.__log.debug("Fetching connection status")
+        log.debug("Fetching connection status")
         response = self._http_request(method="POST", url=self.url.connection_status, headers=headers, body=connection_list)
         return response.json()
 
@@ -449,7 +450,7 @@ class LogicHubAPI:
             url = self.url.custom_list_data
             method = "GET"
             payload = None
-        self.__log.debug("Fetching custom list data")
+        log.debug("Fetching custom list data")
         response = self._http_request(
             method=method,
             url=url,
@@ -466,7 +467,7 @@ class LogicHubAPI:
 
     # ToDo Token auth not supported as of 2022-03-09 (m92)
     def get_dashboard_data(self, dashboard_id):
-        self.__log.debug("Fetching dashboard data")
+        log.debug("Fetching dashboard data")
         response = self._http_request(url=self.url.dashboard_data.format(dashboard_id))
         return response.json()
 
@@ -486,7 +487,7 @@ class LogicHubAPI:
         params = {
             "fields": "name,isPublic,rules[filter,values*1000,score]*1000",
         }
-        self.__log.debug("Fetching rules")
+        log.debug("Fetching rules")
         response = self._http_request(url=self.url.rule_set.format(rule_set), params=params)
         results = response.json()
         try:
@@ -497,7 +498,7 @@ class LogicHubAPI:
 
     def get_stream_by_id(self, stream_id: int):
         headers = {"Accept": "application/json"}
-        self.__log.debug("Fetching stream")
+        log.debug("Fetching stream")
         response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers, test_response=False)
         if response.status_code == 400 and 'Cannot find entity for id StreamId' in response.text:
             raise exceptions.app.StreamNotFound(stream_id)
@@ -506,7 +507,7 @@ class LogicHubAPI:
         return response.json()
 
     def get_version_info(self):
-        self.__log.debug("Fetching LogicHub version info")
+        log.debug("Fetching LogicHub version info")
         try:
             response = self._http_request(
                 url=self.url.version,
@@ -523,7 +524,7 @@ class LogicHubAPI:
 
     def get_workflow_by_id(self, workflow_id: int):
         assert isinstance(workflow_id, int), "Workflow ID must be an integer"
-        self.__log.debug("Fetching workflow")
+        log.debug("Fetching workflow")
         response = self._http_request(method="GET", url=self.url.case_status_workflow_by_id.format(workflow_id))
         return response.json()
 
@@ -541,7 +542,7 @@ class LogicHubAPI:
                 "score": score
             }
         }
-        self.__log.debug("Issuing new scoring rule")
+        log.debug("Issuing new scoring rule")
         response = self._http_request(url=self.url.rule_set.format(rule_set), method="POST", body=body, headers=headers)
         results = response.json()
         try:
@@ -551,7 +552,7 @@ class LogicHubAPI:
         return results
 
     def export_playbook(self, playbook_id, test_response=True):
-        self.__log.debug(f"Exporting playbook {playbook_id}")
+        log.debug(f"Exporting playbook {playbook_id}")
         response = self._http_request(url=self.url.flow_export.format(playbook_id), test_response=test_response)
         return response.json()
 
@@ -563,7 +564,7 @@ class LogicHubAPI:
         :return:
         """
         limit = int(limit if limit and limit > 0 else 999999999)
-        self.__log.debug("Executing LogicHub command")
+        log.debug("Executing LogicHub command")
         response = self._http_request(
             url=self.url.command_execute,
             method="POST",
@@ -574,16 +575,16 @@ class LogicHubAPI:
         try:
             result_dict = response.json()
         except json.decoder.JSONDecodeError:
-            self.__log.fatal(f"Failed to load API response as JSON. Status code: {response.status_code} Response text: {response.text}")
+            log.fatal(f"Failed to load API response as JSON. Status code: {response.status_code} Response text: {response.text}")
             sys.exit(1)
 
         errors = result_dict.pop("errors", [])
         if errors:
-            self.__log.alert(f"Request was successful, but command failed with errors")
-            self.__log.debug(f"Full error list: {json.dumps(errors)}")
-            self.__log.debug(f"Other error response data: {json.dumps(result_dict)}")
+            log.warning(f"Request was successful, but command failed with errors")
+            log.debug(f"Full error list: {json.dumps(errors)}")
+            log.debug(f"Other error response data: {json.dumps(result_dict)}")
             try:
-                self.__log.alert(f"Direct link to command: {self.url.command.format(errors[0]['details']['flowId'])}")
+                log.warning(f"Direct link to command: {self.url.command.format(errors[0]['details']['flowId'])}")
             except KeyError:
                 pass
             for error in errors:
@@ -596,15 +597,15 @@ class LogicHubAPI:
                     #   <<(lhub_file_id,None)>> does not exist in the table.", "flowId": "flow-1019", "nodeId": "ac4ce79f-d6d4-40fc-b855-77086fca92d5",
                     #   "causes": ["lql.LqlValidator$OperatorException: [Error Executing Operator: select]", "java.lang.IllegalArgumentException:
                     #   <<(lhub_file_id,None)>> does not exist in the table."]}
-                    self.__log.debug(f"Command error details: {error_details}")
+                    log.debug(f"Command error details: {error_details}")
 
                 if error:
                     # [DEBUG] [0x10f00cef0] Additional error fields: {"cause": "lql.LqlValidator$OperatorException: [Error Executing Operator: select]"}
-                    self.__log.debug(f"Additional error fields: {json.dumps(error)}")
+                    log.debug(f"Additional error fields: {json.dumps(error)}")
 
                 # [FATAL] [0x11dc8b400] Command returned error (SparkRuntimeException): [Execution Error] Executing node final_output failed.
                 # [Error Executing Operator: select]. <<(lhub_file_id,None)>> does not exist in the table.
-                self.__log.error(f"Command returned error ({error_type}): {error_msg}")
+                log.error(f"Command returned error ({error_type}): {error_msg}")
             sys.exit(1)
 
         try:
@@ -615,7 +616,7 @@ class LogicHubAPI:
                 message += json.dumps(response.json(), indent=2)
             except (json.decoder.JSONDecodeError, ValueError, TypeError):
                 message += response.text
-            self.__log.fatal(message)
+            log.fatal(message)
         return response.json()
 
     def list_baselines(self, limit=None, offset=0, filters=None):
@@ -630,7 +631,7 @@ class LogicHubAPI:
         limit = int(limit if limit and limit > 0 else 999999999)
         params = {"libraryView": "all"}
         body = {"filters": filters or [], "offset": offset or 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
-        self.__log.debug("Fetching baselines")
+        log.debug("Fetching baselines")
         response = self._http_request(method="POST", url=self.url.baselines, params=params, body=body)
         return response.json()
 
@@ -646,7 +647,7 @@ class LogicHubAPI:
         limit = int(limit if limit and limit > 0 else 999999999)
         params = {"libraryView": "all"}
         body = {"filters": filters or [], "offset": offset or 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
-        self.__log.debug("Fetching commands")
+        log.debug("Fetching commands")
         response = self._http_request(method="POST", url=self.url.commands, params=params, body=body)
         return response.json()
 
@@ -663,7 +664,7 @@ class LogicHubAPI:
         params = {"libraryView": "all"}
         headers = {"Content-Type": "application/json"}
         body = {"filters": filters or [], "offset": offset, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
-        self.__log.debug("Fetching connections")
+        log.debug("Fetching connections")
         response = self._http_request(method="POST", url=self.url.connections, headers=headers, params=params, body=body)
         return response.json()
 
@@ -683,7 +684,7 @@ class LogicHubAPI:
         if search_text:
             filters.append({"searchText": search_text})
 
-        self.__log.debug("Fetching custom lists")
+        log.debug("Fetching custom lists")
         response = self._http_request(
             method="POST",
             url=self.url.custom_lists,
@@ -707,12 +708,12 @@ class LogicHubAPI:
 
     # ToDo Token auth not supported as of 2022-03-09 (m92)
     def list_dashboards(self):
-        self.__log.debug("Fetching dashboards")
+        log.debug("Fetching dashboards")
         response = self._http_request(url=self.url.dashboards)
         return response.json()
 
     def list_dashboards_with_widgets(self):
-        self.__log.debug("Fetching dashboards with widgets")
+        log.debug("Fetching dashboards with widgets")
         response = self._http_request(url=self.url.dashboards_and_widgets)
         return response.json()
 
@@ -725,7 +726,7 @@ class LogicHubAPI:
         # Not sure when this one stopped working, but it worked somewhere in at least m66 and didn't work any more in m70
         limit = int(limit if limit and limit > 0 else 999999999)
         params = {"limit": limit}
-        self.__log.debug("Fetching event types")
+        log.debug("Fetching event types")
         response = self._http_request(url=self.url.event_types, params=params)
         results = response.json()
         if results.get("result"):
@@ -745,7 +746,7 @@ class LogicHubAPI:
         params = {"libraryView": "all"}
         # Confirm the right term for "name" as the sort column and change this sort order
         body = {"filters": [], "pageSize": limit, "offset": offset or 0, "sortColumn": "lastUpdated", "sortOrder": "DESC"}
-        self.__log.debug("Fetching event types")
+        log.debug("Fetching event types")
         response = self._http_request(method="POST", url=self.url.event_types, params=params, body=body)
         results = response.json()
         if results.get("result"):
@@ -768,18 +769,18 @@ class LogicHubAPI:
 
     def list_fields(self, params: dict = None, **kwargs):
         params = params or {"systemFields": "true", "pageSize": 9999, "after": 0}
-        self.__log.debug("Fetching fields")
+        log.debug("Fetching fields")
         response = self._http_request(method="GET", url=self.url.fields, params=params, **kwargs)
         self.fields = response.json()
         return response.json()
 
     def list_integrations(self):
-        self.__log.debug("Fetching integrations")
+        log.debug("Fetching integrations")
         response = self._http_request(method="GET", url=self.url.integrations)
         return response.json()
 
     def list_ml_models(self):
-        self.__log.debug("Fetching ML models")
+        log.debug("Fetching ML models")
         response = self._http_request(
             method="GET",
             url=self.url.ml_models,
@@ -788,7 +789,7 @@ class LogicHubAPI:
         return response.json()
 
     def list_modules(self):
-        self.__log.debug("Fetching modules")
+        log.debug("Fetching modules")
         response = self._http_request(
             method="GET",
             url=self.url.modules,
@@ -815,7 +816,7 @@ class LogicHubAPI:
         }
         if search_string:
             body['filters'] = [{"searchText": search_string}]
-        self.__log.debug("Fetching notebooks")
+        log.debug("Fetching notebooks")
         response = self._http_request(
             url=self.url.notebooks_list,
             method="POST",
@@ -838,7 +839,7 @@ class LogicHubAPI:
         """
         limit = int(limit if limit and limit > 0 else 999999999)
         body = {"filters": [], "offset": offset or 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
-        self.__log.debug("Fetching playbooks")
+        log.debug("Fetching playbooks")
         response = self._http_request(
             url=self.url.playbooks_list,
             method="POST",
@@ -859,7 +860,7 @@ class LogicHubAPI:
             "fields": "name,isPublic",
             "pageSize": limit,
         }
-        self.__log.debug("Fetching rule sets")
+        log.debug("Fetching rule sets")
         response = self._http_request(url=self.url.rule_sets, params=params)
         results = response.json()
         try:
@@ -873,7 +874,7 @@ class LogicHubAPI:
         for s in stream_ids:
             new_stream_id_list.append(f'stream-{s}')
         body = {"streams": new_stream_id_list}
-        self.__log.debug("Fetching stream states")
+        log.debug("Fetching stream states")
         response = self._http_request(method="POST", url=self.url.stream_states, body=body)
         return response.json()
 
@@ -903,7 +904,7 @@ class LogicHubAPI:
             "sortOrder": "ASC"
         }
 
-        self.__log.debug("Fetching streams")
+        log.debug("Fetching streams")
         response = self._http_request(method="POST", url=self.url.streams, body=body_dict, headers=headers, params=params)
         return response.json()
 
@@ -913,7 +914,7 @@ class LogicHubAPI:
         body = {"filters": []}
         if hide_inactive:
             body['filters'].append({"hideDeleted": True})
-        self.__log.debug("Fetching user groups")
+        log.debug("Fetching user groups")
         response = self._http_request(
             url=self.url.user_groups,
             method="POST",
@@ -929,7 +930,7 @@ class LogicHubAPI:
         body = {"filters": []}
         if hide_inactive:
             body['filters'].append({"hideInactive": True})
-        self.__log.debug("Fetching users")
+        log.debug("Fetching users")
         response = self._http_request(
             url=self.url.users,
             method="POST",
@@ -940,7 +941,7 @@ class LogicHubAPI:
         return response.json()
 
     def list_workflows(self):
-        self.__log.debug("Fetching workflows")
+        log.debug("Fetching workflows")
         response = self._http_request(method="GET", url=self.url.case_status_list_workflows)
         return response.json()
 
@@ -955,12 +956,12 @@ class LogicHubAPI:
             batch_id = int(re.sub(r'\D+', '', str(batch_id)))
         headers = {"Content-Type": "application/json"}
         body = {"method": "reschedule", "parameters": {}}
-        self.__log.debug("Issuing command to reprocess batch")
+        log.debug("Issuing command to reprocess batch")
         response = self._http_request(method="POST", url=self.url.batch_reprocess.format(batch_id), headers=headers, body=body)
         return response.json()
 
     def me(self):
-        self.__log.debug("Fetching current user info")
+        log.debug("Fetching current user info")
         response = self._http_request(method="GET", url=self.url.me, timeout=30)
         result = response.json()
         if not all((
@@ -982,11 +983,11 @@ class LogicHubAPI:
             # Username will only exist already if password auth is used. In case of API token auth, capture and record the username.
             if self.__username != result['result']['username']:
                 self.__username = result['result']['username']
-                self.__log.debug(f"Current user updated to {self.__username} [ID: {self.__user_id}, role: {self.__user_role}]")
+                log.debug(f"Current user updated to {self.__username} [ID: {self.__user_id}, role: {self.__user_role}]")
         return result
 
     def update_current_user_preferences(self, preferences):
-        self.__log.debug("Patching user (updating preferences)")
+        log.debug("Patching user (updating preferences)")
         response = self._http_request(method="PATCH", url=self.url.user.format(self.session_user_id), body={"preferences": preferences})
         return response.json()
 
@@ -1011,7 +1012,7 @@ class LogicHubAPI:
     #
     #     field_id = self.formatted.system_field_lh_linked_alerts.get('id')
     #     body = {"fields": [{"id": field_id, "value": alert_ids}]}
-    #     self.__log.debug("Linking alert to case")
+    #     log.debug("Linking alert to case")
     #     response = self._http_request(
     #         method="PATCH",
     #         url=self.url.case_update_linked_alerts.format(case_id=case_id),
@@ -1020,7 +1021,7 @@ class LogicHubAPI:
     #     output = response.json()
 
     def cases_get_prefix(self):
-        self.__log.debug("Fetching case prefix")
+        log.debug("Fetching case prefix")
         response = self._http_request(
             url=self.url.cases_get_prefix,
             headers={"Content-Type": "application/json"}
@@ -1034,7 +1035,7 @@ class LogicHubAPI:
             "id": helpers.format_case_id_with_prefix(case_id, self.case_prefix),
             "key": "case",
         }
-        self.__log.debug("Fetching attached notebooks")
+        log.debug("Fetching attached notebooks")
         response = self._http_request(
             url=self.url.notebooks_attached,
             method="POST",
@@ -1059,7 +1060,7 @@ class LogicHubAPI:
                 "id": helpers.format_case_id_with_prefix(case_id, self.case_prefix),
             }
         }
-        self.__log.debug("Updating attached notebooks")
+        log.debug("Updating attached notebooks")
         response = self._http_request(
             url=self.url.notebooks_attach,
             method="PATCH",
@@ -1073,7 +1074,7 @@ class LogicHubAPI:
         alert_id = helpers.format_alert_id(alert_id)
         url = self.url.alert_fetch.format(alert_id)
         # Send request, but disable immediate testing in order to do specialized testing first
-        self.__log.debug("Fetching alert")
+        log.debug("Fetching alert")
         response = self._http_request(method="GET", url=url, test_response=False, **kwargs)
         if return_raw:
             return response
@@ -1086,7 +1087,7 @@ class LogicHubAPI:
         if query:
             # First confirm that the query is valid
             body = {"queryType": "advanced", "query": query}
-            self.__log.debug("Validating search syntax")
+            log.debug("Validating search syntax")
             response = self._http_request(
                 url=self.url.alerts_search_validate,
                 method="POST",
@@ -1114,7 +1115,7 @@ class LogicHubAPI:
             "sortOrder": "desc",
             "query": query
         }
-        self.__log.debug("Searching alerts")
+        log.debug("Searching alerts")
         response = self._http_request(
             url=self.url.alerts_search_advanced,
             method="POST",
@@ -1126,14 +1127,14 @@ class LogicHubAPI:
     def stream_pause(self, stream_id, **kwargs):
         # Sanitize stream ID
         body = [f"stream-{helpers.format_stream_id(stream_id)}"]
-        self.__log.debug("Pausing stream")
+        log.debug("Pausing stream")
         response = self._http_request(method="POST", url=self.url.stream_pause, body=body, **kwargs)
         return response.json()
 
     def stream_resume(self, stream_id, **kwargs):
         # Sanitize stream ID
         body = [f"stream-{helpers.format_stream_id(stream_id)}"]
-        self.__log.debug("Resuming stream")
+        log.debug("Resuming stream")
         response = self._http_request(method="POST", url=self.url.stream_resume, body=body, **kwargs)
         return response.json()
 
@@ -1144,12 +1145,12 @@ class LogicHubAPI:
             "userGroupIds": group_ids,
             "authenticationType": authentication_type or "password"
         }
-        self.__log.debug(f"Creating user: {username}")
+        log.debug(f"Creating user: {username}")
         response = self._http_request(method="POST", url=self.url.user_create, body=body)
         return response.json()
 
     def delete_user(self, user_ids: list):
-        self.__log.debug(f"Deleting users by id: {', '.join([str(i) for i in user_ids])}")
+        log.debug(f"Deleting users by id: {', '.join([str(i) for i in user_ids])}")
         response = self._http_request(method="POST", url=self.url.user_delete, body=user_ids)
         return response.json()
 

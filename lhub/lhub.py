@@ -3,20 +3,21 @@ import re
 from copy import deepcopy
 
 from .api import LogicHubAPI
-from .log import _DefaultLogger
 from .common import helpers
 from .common.time import epoch_time_to_str
 from .exceptions.app import BaseAppError, UserGroupNotFound, UserNotFound
 from .exceptions.validation import InputValidationError, ResponseValidationError
 from .exceptions.formatting import InvalidWorkflowIdFormat
-from logging import RootLogger
+from .log import prep_generic_logger
+from logging import getLogger, RootLogger
+
+log = getLogger(__name__)
 
 
 class Actions:
 
-    def __init__(self, api: LogicHubAPI, logger: RootLogger = None):
+    def __init__(self, api: LogicHubAPI):
         self.__api = api
-        self.__log = logger or _DefaultLogger
 
     @staticmethod
     def __enrich_alert_data(alert: dict, included_standard_fields=None, included_additional_fields=None):
@@ -72,7 +73,8 @@ class Actions:
         response = self.list_playbooks()
         return {p["id"]["id"]: p["name"] for p in response}
 
-    def __reformat_cmd_results(self, response_dict, drop_hidden_columns=True):
+    @staticmethod
+    def __reformat_cmd_results(response_dict, drop_hidden_columns=True):
         full_result = response_dict.copy()
         result_raw = full_result["result"]
         warnings = full_result["result"].get("warnings")
@@ -84,7 +86,7 @@ class Actions:
             result_output = [{k: v for k, v in _result['fields'].items()} for _result in result_with_schema]
 
         for _warning in warnings:
-            self.__log.debug(f"WARNING RETURNED: {_warning}")
+            log.warning(f"Warning returned: {_warning}")
         return result_output, warnings
 
     def execute_command(self, command_name, input_dict, reformat=True, result_limit=None):
@@ -214,7 +216,7 @@ class Actions:
         result = self.__api.list_commands(filters=filters, limit=limit, offset=0)
         _ = self._result_dict_has_schema(result, "result", "data", "data", action_description="list commands", raise_errors=True)
         results = result["result"]["data"]
-        self.__log.debug(f"{len(results)} commands found")
+        log.debug(f"{len(results)} command{'s' if len(results) != 1 else ''} found")
         if simple_format:
             results = [self.__reformat_command_simple(r) for r in results['data']]
         return results
@@ -353,7 +355,8 @@ class Actions:
         result = self.__api.list_users(hide_inactive=hide_inactive)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list users", raise_errors=True)
         results = result["result"]
-        self.__log.debug(f"{len(results['data'])} users found")
+        result_count = len(results['data'])
+        log.debug(f"{result_count} user{'s' if result_count != 0 else ''} found")
         if simple_format:
             results = [self.__reformat_user_simple(result) for result in results['data']]
         return results
@@ -464,13 +467,13 @@ class Actions:
                     if g not in _groups:
                         raise UserGroupNotFound(input_var=g)
                     _group_id = helpers.format_user_group_id(_groups[g])
-                    self.__log.debug(f"Translated group {g} to ID {_group_id}")
+                    log.debug(f"Translated group {g} to ID {_group_id}")
                     group_ids.append(_group_id)
             else:
                 group_ids = _groups["Everyone"]
 
         kwargs = {"username": username, "email": email, "authentication_type": authentication_type, "group_ids": group_ids}
-        self.__log.debug(f"Creating user: {json.dumps(kwargs)}")
+        log.debug(f"Creating user: {json.dumps(kwargs)}")
         response = self.__api.create_user(**kwargs)
         return response['result']
 
@@ -487,7 +490,7 @@ class Actions:
             if u not in _users:
                 raise UserNotFound(input_var=u)
             _user_id = helpers.format_user_id(_users[u])
-            self.__log.debug(f"Translated user {u} to ID {_user_id}")
+            log.debug(f"Translated user {u} to ID {_user_id}")
             user_ids.append(_user_id)
         return self.delete_user_by_id(user_ids=user_ids)
 
@@ -497,17 +500,24 @@ class LogicHub:
 
     def __init__(
             self, hostname, api_key=None, username=None, password=None,
-            cache_seconds=None, verify_api_auth=True, default_timeout=None, **kwargs):
+            cache_seconds=None, verify_api_auth=True, default_timeout=None, logger: RootLogger = None, log_level=None, **kwargs):
+        global log
+        if logger:
+            log = logger
+        else:
+            prep_generic_logger(level=log_level)
+        self.hostname = hostname
         self.kwargs = kwargs
-        self.__log = kwargs.get('logger', _DefaultLogger)
         self.api = LogicHubAPI(
             hostname=hostname, api_key=api_key, username=username, password=password,
-            cache_seconds=cache_seconds, default_timeout=default_timeout, **kwargs)
-        self.actions = Actions(self.api, logger=self.__log)
+            cache_seconds=cache_seconds, default_timeout=default_timeout,
+            logger=logger, **kwargs)
+        self.actions = Actions(self.api)
         if verify_api_auth:
             _ = self._verify_api_auth()
-        self.__log.debug("LogicHub (lhub) session successfully initialized")
+        log.debug(f"LogicHub (lhub) session successfully initialized (hostname={self.hostname})")
 
     def _verify_api_auth(self):
         _ = self.api.me()
+        log.debug(f"Authentication successful (hostname={self.hostname})")
         return True
