@@ -113,7 +113,7 @@ class URLs:
 
     # ToDo Token auth not supported as of 2022-03-09 (m92)
     @property
-    def dashboard_config(self):
+    def dashboard(self):
         """Get the config for a single dashboard"""
         return f"{self.base}/api/dashboards/v2/{{}}"
 

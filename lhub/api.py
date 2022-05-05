@@ -465,7 +465,13 @@ class LogicHubAPI:
             raise exceptions.app.UnexpectedOutput("API response does not match the expected schema for listing custom lists")
         return results
 
-    # ToDo Token auth not supported as of 2022-03-09 (m92)
+    # ToDo Token auth not supported as of 2022-05-05 (m94)
+    def get_dashboard(self, dashboard_id):
+        log.debug("Fetching dashboard data")
+        response = self._http_request(url=self.url.dashboard.format(dashboard_id))
+        return response.json()
+
+    # ToDo Token auth not supported as of 2022-05-05 (m94)
     def get_dashboard_data(self, dashboard_id):
         log.debug("Fetching dashboard data")
         response = self._http_request(url=self.url.dashboard_data.format(dashboard_id))
