@@ -104,6 +104,29 @@ def format_stream_id(var):
     return __id_string_to_int(var, formatting.InvalidStreamIdFormat(input_var=var))
 
 
+@dispatch(dict)
+def format_stream_id(var):
+    stream_id = None
+    if var.get("streamId"):
+        stream_id = var['streamId']
+    elif var.get('id'):
+        stream_id = var['id']
+        if isinstance(stream_id, dict):
+            stream_id = stream_id.get('id')
+    if not stream_id:
+        raise formatting.InvalidStreamIdFormat(input_var=var)
+    return format_stream_id(stream_id)
+
+
+@dispatch(list)
+def format_stream_id(var):
+    ordered_distinct_streams = []
+    for s in [format_stream_id(v) for v in var]:
+        if s not in ordered_distinct_streams:
+            ordered_distinct_streams.append(s)
+    return ordered_distinct_streams
+
+
 @dispatch(Number)
 def format_user_id(var):
     return int(var)

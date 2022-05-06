@@ -15,6 +15,7 @@ from .log import prep_generic_logger
 from .url import URLs
 from .common import helpers
 from logging import getLogger, RootLogger
+from typing import List
 
 log = getLogger(__name__)
 cached_obj = namedtuple('CachedObject', ['time', 'value'])
@@ -477,6 +478,12 @@ class LogicHubAPI:
         response = self._http_request(url=self.url.dashboard_data.format(dashboard_id))
         return response.json()
 
+    # ToDo Token auth not supported as of 2022-05-05 (m94)
+    def get_widget_data(self, dashboard_id, widget_id):
+        log.debug("Fetching dashboard data")
+        response = self._http_request(url=self.url.widget_data.format(dashboard_id=dashboard_id, widget_id=widget_id))
+        return response.json()
+
     # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
     def get_rule_set_by_name(self, name):
         rule_sets = self.list_rule_sets()
@@ -875,7 +882,7 @@ class LogicHubAPI:
             raise exceptions.app.UnexpectedOutput("API response does not match the expected schema for listing rule sets")
         return results
 
-    def list_stream_states(self, stream_ids: list):
+    def list_stream_states(self, stream_ids: List[int]):
         new_stream_id_list = []
         for s in stream_ids:
             new_stream_id_list.append(f'stream-{s}')

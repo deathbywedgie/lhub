@@ -5,11 +5,12 @@ from copy import deepcopy
 from .api import LogicHubAPI
 from .common import helpers
 from .common.time import epoch_time_to_str
-from .exceptions.app import BaseAppError, UserGroupNotFound, UserNotFound
+from .exceptions.app import BaseAppError, UserGroupNotFound, UserNotFound, UnexpectedOutput
 from .exceptions.validation import InputValidationError, ResponseValidationError
 from .exceptions.formatting import InvalidWorkflowIdFormat
 from .log import prep_generic_logger
 from logging import getLogger, RootLogger
+from typing import List, Union
 
 log = getLogger(__name__)
 
@@ -185,6 +186,22 @@ class Actions:
         _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="get workflow by ID")
         return result["result"]
 
+    def list_stream_states(self, stream_ids, include_recent_batches=True, return_as_simple_dict=False):
+        stream_ids = helpers.format_stream_id(stream_ids)
+        result = self.__api.list_stream_states(stream_ids=stream_ids)
+        _ = self._result_dict_has_schema(result, "result", "streams", raise_errors=True, action_description="get stream states")
+        results = result['result']['streams']
+        if return_as_simple_dict:
+            return {r["streamId"]: r["status"] for r in results}
+        if not include_recent_batches:
+            for n in range(len(results)):
+                _stream_id = results[n]['streamId']
+                if 'data' in results[n]:
+                    del results[n]['data']
+                else:
+                    log.warning(f"Expected recent batches in 'data' key of stream state, but no such key was found for stream {_stream_id}")
+        return results
+
     def list_baselines(self):
         result = self.__api.list_baselines()
         _ = self._result_dict_has_schema(result, "result", "data", "data", raise_errors=True, action_description="list baselines")
@@ -325,10 +342,38 @@ class Actions:
             output = {f['name']: {k: v for k, v in f.items() if k != 'name'} for f in output}
         return output
 
-    def list_streams(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = 0):
+    def list_streams(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = 0, verify_stream_states=False):
+        """
+        List all streams (or streams matching a search filter)
+
+        :param search_text: Partial or full name of the streams to return
+        :param filters: Other search filters (see the streams API)
+        :param limit: Limit the number of results to return
+        :param offset: For pagination, provide the page number of results to return
+        :param verify_stream_states: The streams API does not wait for stream status
+        calculation to complete unless status is part of the search filter. Enabling
+        this option will fetch the true state for every stream returned before returning results.
+        :param return_as_simple_dict: Return a simple dict instead, with stream IDs as keys and their respective statuses as values.
+        :return:
+        """
         result = self.__api.list_streams(search_text=search_text, filters=filters, limit=limit, offset=offset)
+        # ToDo get accurate states with actions.list_stream_states
+        # ToDo file a bug for the streams api returning incorrect states
         _ = self._result_dict_has_schema(result, "result", "data", "data", raise_errors=True, action_description="list streams")
-        return result["result"]["data"]["data"]
+        results = result["result"]["data"]["data"]
+        if verify_stream_states is True:
+            id_list = helpers.format_stream_id(results)
+            states = self.list_stream_states(stream_ids=id_list, include_recent_batches=False, return_as_simple_dict=True)
+            for r in results:
+                if not r.get('id') or not r['id'].get('id'):
+                    raise UnexpectedOutput(f"stream dict did not match expected format: {r}")
+                _id_str = f"stream-{r['id']['id']}"
+                _id_str = f"stream-{r['id']['id']}"
+                if not states.get(_id_str):
+                    raise UnexpectedOutput(f"{_id_str} was returned in the stream search but was not present in state search results")
+                r['streamStatus'] = states[_id_str]
+
+        return results
 
     def list_user_groups(self, hide_inactive=False):
         result = self.__api.list_user_groups(hide_inactive=hide_inactive)

@@ -128,7 +128,6 @@ class URLs:
     def dashboards(self):
         """List all dashboards"""
         return f"{self.base}/api/dashboards/v2"
-
     @property
     def dashboards_and_widgets(self):
         """
@@ -254,3 +253,10 @@ class URLs:
     @property
     def version(self):
         return f"{self.base}/api/version"
+
+    # ToDo confirm Token auth
+    @property
+    def widget_data(self):
+        """Get widget data from a single dashboard's current state"""
+        return f"{self.base}/api/dashboards/v2/{{dashboard_id}}/widget/{{widget_id}}/data"
+
