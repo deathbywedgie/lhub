@@ -15,6 +15,7 @@ from .log import prep_generic_logger
 from .url import URLs
 from .common import helpers
 from logging import getLogger, RootLogger
+from typing import List
 
 log = getLogger(__name__)
 cached_obj = namedtuple('CachedObject', ['time', 'value'])
