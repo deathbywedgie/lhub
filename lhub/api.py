@@ -477,6 +477,12 @@ class LogicHubAPI:
         response = self._http_request(url=self.url.dashboard_data.format(dashboard_id))
         return response.json()
 
+    # ToDo Token auth not supported as of 2022-05-05 (m94)
+    def get_widget_data(self, dashboard_id, widget_id):
+        log.debug("Fetching dashboard data")
+        response = self._http_request(url=self.url.widget_data.format(dashboard_id=dashboard_id, widget_id=widget_id))
+        return response.json()
+
     # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
     def get_rule_set_by_name(self, name):
         rule_sets = self.list_rule_sets()
