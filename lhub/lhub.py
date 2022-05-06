@@ -342,10 +342,38 @@ class Actions:
             output = {f['name']: {k: v for k, v in f.items() if k != 'name'} for f in output}
         return output
 
-    def list_streams(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = 0):
+    def list_streams(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = 0, verify_stream_states=False):
+        """
+        List all streams (or streams matching a search filter)
+
+        :param search_text: Partial or full name of the streams to return
+        :param filters: Other search filters (see the streams API)
+        :param limit: Limit the number of results to return
+        :param offset: For pagination, provide the page number of results to return
+        :param verify_stream_states: The streams API does not wait for stream status
+        calculation to complete unless status is part of the search filter. Enabling
+        this option will fetch the true state for every stream returned before returning results.
+        :param return_as_simple_dict: Return a simple dict instead, with stream IDs as keys and their respective statuses as values.
+        :return:
+        """
         result = self.__api.list_streams(search_text=search_text, filters=filters, limit=limit, offset=offset)
+        # ToDo get accurate states with actions.list_stream_states
+        # ToDo file a bug for the streams api returning incorrect states
         _ = self._result_dict_has_schema(result, "result", "data", "data", raise_errors=True, action_description="list streams")
-        return result["result"]["data"]["data"]
+        results = result["result"]["data"]["data"]
+        if verify_stream_states is True:
+            id_list = helpers.format_stream_id(results)
+            states = self.list_stream_states(stream_ids=id_list, include_recent_batches=False, return_as_simple_dict=True)
+            for r in results:
+                if not r.get('id') or not r['id'].get('id'):
+                    raise UnexpectedOutput(f"stream dict did not match expected format: {r}")
+                _id_str = f"stream-{r['id']['id']}"
+                _id_str = f"stream-{r['id']['id']}"
+                if not states.get(_id_str):
+                    raise UnexpectedOutput(f"{_id_str} was returned in the stream search but was not present in state search results")
+                r['streamStatus'] = states[_id_str]
+
+        return results
 
     def list_user_groups(self, hide_inactive=False):
         result = self.__api.list_user_groups(hide_inactive=hide_inactive)
