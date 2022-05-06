@@ -881,7 +881,7 @@ class LogicHubAPI:
             raise exceptions.app.UnexpectedOutput("API response does not match the expected schema for listing rule sets")
         return results
 
-    def list_stream_states(self, stream_ids: list):
+    def list_stream_states(self, stream_ids: List[int]):
         new_stream_id_list = []
         for s in stream_ids:
             new_stream_id_list.append(f'stream-{s}')
