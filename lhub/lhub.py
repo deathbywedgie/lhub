@@ -5,11 +5,12 @@ from copy import deepcopy
 from .api import LogicHubAPI
 from .common import helpers
 from .common.time import epoch_time_to_str
-from .exceptions.app import BaseAppError, UserGroupNotFound, UserNotFound
+from .exceptions.app import BaseAppError, UserGroupNotFound, UserNotFound, UnexpectedOutput
 from .exceptions.validation import InputValidationError, ResponseValidationError
 from .exceptions.formatting import InvalidWorkflowIdFormat
 from .log import prep_generic_logger
 from logging import getLogger, RootLogger
+from typing import List, Union
 
 log = getLogger(__name__)
 
@@ -184,6 +185,22 @@ class Actions:
         result = self.__api.get_workflow_by_id(workflow_id=workflow_id)
         _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="get workflow by ID")
         return result["result"]
+
+    def list_stream_states(self, stream_ids, include_recent_batches=True, return_as_simple_dict=False):
+        stream_ids = helpers.format_stream_id(stream_ids)
+        result = self.__api.list_stream_states(stream_ids=stream_ids)
+        _ = self._result_dict_has_schema(result, "result", "streams", raise_errors=True, action_description="get stream states")
+        results = result['result']['streams']
+        if return_as_simple_dict:
+            return {r["streamId"]: r["status"] for r in results}
+        if not include_recent_batches:
+            for n in range(len(results)):
+                _stream_id = results[n]['streamId']
+                if 'data' in results[n]:
+                    del results[n]['data']
+                else:
+                    log.warning(f"Expected recent batches in 'data' key of stream state, but no such key was found for stream {_stream_id}")
+        return results
 
     def list_baselines(self):
         result = self.__api.list_baselines()
