@@ -504,6 +504,8 @@ class Actions:
         :return:
         """
         authentication_type = authentication_type or "password"
+        if authentication_type != "password" and not isinstance(authentication_type, dict):
+            raise InputValidationError(input_var=authentication_type, action_description="authentication type")
         if not group_ids:
             _groups = self.__api.formatted.user_groups_by_name
             if group_names:
