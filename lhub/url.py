@@ -259,4 +259,3 @@ class URLs:
     def widget_data(self):
         """Get widget data from a single dashboard's current state"""
         return f"{self.base}/api/dashboards/v2/{{dashboard_id}}/widget/{{widget_id}}/data"
-
