@@ -4,10 +4,10 @@ from requests.exceptions import HTTPError
 
 class BaseAppError(LhBaseException):
     """Base exception for failures from interacting with LogicHub itself, including custom HTTP errors"""
+    message = "LogicHub returned an error"
 
     def __init__(self, message=None, *args, **kwargs):
-        self.message = message or "HTTP error"
-        super().__init__(self.message, *args, **kwargs)
+        super().__init__(message or self.message, *args, **kwargs)
 
 
 class BatchNotFound(BaseAppError):
@@ -89,6 +89,19 @@ class UserNotFound(BaseAppError):
     """User not found"""
 
     __default_message = 'User not found'
+
+    def __init__(self, input_var, message=None, *args, **kwargs):
+        self.input = input_var
+        if self.input:
+            self.__default_message += f": {self.input}"
+        self.message = message or self.__default_message
+        super().__init__(self.message, *args, **kwargs)
+
+
+class UserAlreadyExists(BaseAppError):
+    """User not found"""
+
+    __default_message = 'User already exists'
 
     def __init__(self, input_var, message=None, *args, **kwargs):
         self.input = input_var
