@@ -3,7 +3,7 @@ import json
 import re
 from collections import namedtuple
 
-from requests import request
+from requests import request, models
 from requests.exceptions import HTTPError
 from urllib3 import disable_warnings
 from urllib3.exceptions import InsecureRequestWarning
@@ -229,11 +229,33 @@ class LogicHubAPI:
             return {}
         return {'PLAY_SESSION': self.session_cookie}
 
-    def __standard_http_response_tests(self, response_obj, url):
+    def __standard_http_response_tests(self, response_obj: models.Response, url: str, input_var=None):
+        # If the response is okay, return successfully right away
+        try:
+            response_obj.raise_for_status()
+            return
+        except HTTPError as e:
+            caught_exception = e
+
+        try:
+            __response_json = response_obj.json()
+        except json.decoder.JSONDecodeError:
+            __response_json = {}
+
+        __status_code = response_obj.status_code
+        __errors = __response_json.get("errors", [])
+        __primary_error_type = __errors[0].get("errorType") if __errors else None
+        exception_inputs = {
+            "input_var": input_var,
+            "url": url,
+            "last_response_status": __status_code,
+            "last_response_text": response_obj.text,
+        }
+
         # Group all tests for status code 401
-        if response_obj.status_code == 401:
+        if __status_code == 401:
             if self.auth_type == 'password':
-                raise exceptions.auth.PasswordAuthFailure
+                raise exceptions.auth.PasswordAuthFailure(**exception_inputs)
             else:
                 if 'Unauthorized for URL' in response_obj.text or 'token is not allowed with this endpoint' in response_obj.text:
                     raise exceptions.auth.APIAuthNotAuthorized(url)
@@ -241,7 +263,7 @@ class LogicHubAPI:
                     raise exceptions.auth.APIAuthFailure(url)
 
         # Group all tests for status code 400
-        elif response_obj.status_code == 400:
+        elif __status_code == 400:
             if self.auth_type == 'password':
                 if url == self.url.login and 'Username/Password not valid' in self.last_response_text:
                     raise exceptions.auth.PasswordAuthFailure
@@ -249,20 +271,22 @@ class LogicHubAPI:
                 _id = re.search(r'POST /demo/batch-(\d+)', response_obj.text)
                 _id = _id.groups()[0] if _id else None
                 raise exceptions.app.BatchNotFound(_id)
+            if __primary_error_type == "AlreadyPresentException" and url == self.url.user_create:
+                raise exceptions.app.UserAlreadyExists(input_var=input_var)
 
         # Group all tests for status code 500
-        elif response_obj.status_code == 500:
+        elif __status_code == 500:
             if 'Unable to find batch with id' in response_obj.text:
                 _id = re.search(r'Unable to find batch with id batch-(\d+)', response_obj.text)
                 _id = _id.groups()[0] if _id else None
                 raise exceptions.app.BatchNotFound(_id)
 
-        response_obj.raise_for_status()
+        raise caught_exception
 
     def _http_request(
             self, url, method="GET", params: dict = None, body=None,
             headers: dict = None, timeout=None, test_response: bool = True,
-            reauth=True, **kwargs):
+            reauth=True, input_var=None, **kwargs):
         method = method.upper() if method else "GET"
         # Only use reauth/automatic login if password auth is used
         if self.auth_type == 'password':
@@ -588,8 +612,9 @@ class LogicHubAPI:
         try:
             result_dict = response.json()
         except json.decoder.JSONDecodeError:
-            log.fatal(f"Failed to load API response as JSON. Status code: {response.status_code} Response text: {response.text}")
-            sys.exit(1)
+            msg = f"Failed to load API response as JSON. Status code: {response.status_code} Response text: {response.text}"
+            log.fatal(msg)
+            raise exceptions.app.UnexpectedOutput(msg)
 
         errors = result_dict.pop("errors", [])
         if errors:
