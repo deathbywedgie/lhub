@@ -10,7 +10,7 @@ from .exceptions.validation import InputValidationError, ResponseValidationError
 from .exceptions.formatting import InvalidWorkflowIdFormat
 from .log import prep_generic_logger
 from logging import getLogger, RootLogger
-from typing import List, Union
+from typing import Union
 
 log = getLogger(__name__)
 
@@ -524,13 +524,13 @@ class Actions:
         response = self.__api.create_user(**kwargs)
         return response['result']
 
-    def delete_user_by_id(self, user_ids: (str, list)):
+    def delete_user_by_id(self, user_ids: Union[str, list]):
         if not isinstance(user_ids, list):
             user_ids = [user_ids]
         user_ids = [helpers.format_user_id(u) for u in user_ids]
         return self.__api.delete_user(user_ids=user_ids)
 
-    def delete_user_by_name(self, usernames: (str, list)):
+    def delete_user_by_name(self, usernames: Union[str, list]):
         _users = self.__api.formatted.users_by_name
         user_ids = []
         for u in (usernames if isinstance(usernames, list) else [usernames]):
