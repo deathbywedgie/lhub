@@ -998,6 +998,7 @@ class LogicHubAPI:
         response = self._http_request(method="POST", url=self.url.batch_reprocess.format(batch_id), headers=headers, body=body, input_var=batch_id)
         return response.json()
 
+    # introduced somewhere between m70 and m80
     def me(self):
         log.debug("Fetching current user info")
         response = self._http_request(method="GET", url=self.url.me, timeout=30)
