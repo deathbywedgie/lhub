@@ -7,8 +7,14 @@ class LhBaseException(BaseException):
     message = "An exception occurred"
 
     def __init__(self, *args, **kwargs):
-        self.message = kwargs.get("message", self.message)
         self.input = kwargs.pop("input_var", None)
+        if args:
+            self.message = args[0]
+        elif self.input:
+            self.message += f": {self.input}"
+        if not args:
+            args = [self.message]
+
         self.url = kwargs.pop("url", None)
         self.last_response_status = kwargs.pop("last_response_status", None)
         self.last_response_text = kwargs.pop("last_response_status", None)
