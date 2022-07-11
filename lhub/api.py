@@ -972,12 +972,13 @@ class LogicHubAPI:
         )
         return response.json()
 
-    def list_users(self, limit=None, hide_inactive=True):
+    def list_users_v1_up_to_m95(self, limit=None, hide_inactive=True):
         limit = limit if limit and isinstance(limit, int) else 99999
         params = {"pageSize": limit, "after": 0}
         body = {"filters": []}
         if hide_inactive:
             body['filters'].append({"hideInactive": True})
+        log.debug(f"TEMP -- body: {json.dumps(body)}")
         log.debug("Fetching users")
         response = self._http_request(
             url=self.url.users,
@@ -987,6 +988,33 @@ class LogicHubAPI:
             body=body
         )
         return response.json()
+
+    def list_users_v2_from_m96(self, limit=None, **kwargs):
+        limit = limit if limit and isinstance(limit, int) else 99999
+        params = {"pageSize": limit, "after": 0}
+        body = {"filters": []}
+        if kwargs:
+            body["filters"].append(kwargs)
+        log.debug(f"TEMP -- body: {json.dumps(body)}")
+        log.debug("Fetching users")
+        response = self._http_request(
+            url=self.url.users,
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            params=params,
+            body=body
+        )
+        return response.json()
+
+    def list_users(self, limit=None, **kwargs):
+        if self.major_version > 95 and "hide_inactive" in kwargs:
+            raise DeprecationWarning("The \"hideInactive\" filter is no longer valid since LogicHub version m96")
+
+        if self.major_version <= 95:
+            func = self.list_users_v1_up_to_m95
+        else:
+            func = self.list_users_v2_from_m96
+        return func(limit=limit, **kwargs)
 
     def list_workflows(self):
         log.debug("Fetching workflows")
