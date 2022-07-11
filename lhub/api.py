@@ -23,6 +23,7 @@ cached_obj = namedtuple('CachedObject', ['time', 'value'])
 
 class LogicHubAPI:
     DEFAULT_ALERT_RESULT_LIMIT = 100
+    DEFAULT_CASE_RESULT_LIMIT = 25
     DEFAULT_CACHE_SECONDS = 300
     USER_AGENT_STRING = "LHUB CLI"
     http_timeout_default = 120
@@ -271,8 +272,11 @@ class LogicHubAPI:
                 _id = re.search(r'POST /demo/batch-(\d+)', response_obj.text)
                 _id = _id.groups()[0] if _id else None
                 raise exceptions.app.BatchNotFound(_id)
-            if __primary_error_type == "AlreadyPresentException" and url == self.url.user_create:
-                raise exceptions.app.UserAlreadyExists(input_var=input_var)
+            if __primary_error_type == "AlreadyPresentException":
+                if url == self.url.user_create:
+                    raise exceptions.app.UserAlreadyExists(user=input_var)
+                if url == self.url.user_group_create:
+                    raise exceptions.app.UserGroupAlreadyExists(input_var=input_var)
 
         # Group all tests for status code 500
         elif __status_code == 500:
@@ -322,6 +326,7 @@ class LogicHubAPI:
                 response = request(method=method, url=url, verify=self.verify_ssl, timeout=timeout, cookies=self.cookies, **kwargs)
 
         # Store last response before testing whether the call was successful
+        self.last_url = url
         self.last_response_status = response.status_code
         self.last_response_text = response.text
         if test_response:
@@ -907,6 +912,11 @@ class LogicHubAPI:
             raise exceptions.app.UnexpectedOutput("API response does not match the expected schema for listing rule sets")
         return results
 
+    def list_saml_configs(self):
+        log.debug("Fetching SSO configurations")
+        response = self._http_request(url=self.url.saml_configs)
+        return response.json()
+
     def list_stream_states(self, stream_ids: List[int]):
         new_stream_id_list = []
         for s in stream_ids:
@@ -1060,6 +1070,18 @@ class LogicHubAPI:
     #     )
     #     output = response.json()
 
+    def case_update(self, case_id: str, **kwargs):
+        if not kwargs:
+            raise exceptions.validation.InputValidationError("No changes provided for updating case", input_var=case_id, action_description="case update")
+        log.debug("Updating case")
+        response = self._http_request(
+            method="PATCH",
+            url=self.url.case.format(case_id=case_id),
+            headers={"Content-Type": "application/json"},
+            body=kwargs
+        )
+        return response.json()
+
     def cases_get_prefix(self):
         log.debug("Fetching case prefix")
         response = self._http_request(
@@ -1112,6 +1134,53 @@ class LogicHubAPI:
         )
         return response.json()
 
+    # ToDo Update alert search and validation methods to match the updates I made here
+    def cases_search_validate(self, query: str):
+        if query:
+            # First confirm that the query is valid
+            body = {"queryType": "advanced", "query": query}
+            log.debug("Validating search syntax")
+            response = self._http_request(
+                url=self.url.cases_search_validate,
+                method="POST",
+                headers={"Content-Type": "application/json"},
+                body=body
+            )
+            response = response.json()
+            is_invalid = response['result'].get('error')
+            if is_invalid is None:
+                raise exceptions.app.UnexpectedOutput('Unexpected response while validating query string.')
+            elif is_invalid:
+                raise exceptions.app.CaseQueryValidationError(response['result'].get('message'))
+
+    # ToDo Update alert search and validation methods to match the updates I made here
+    def case_search_advanced(self, query: str = None, limit: int = None, **kwargs):
+        # Validate inputs
+        if limit is None:
+            limit = self.DEFAULT_CASE_RESULT_LIMIT
+        elif limit == -1:
+            limit = 999999
+        elif not isinstance(limit, int):
+            raise exceptions.validation.InputValidationError("Invalid input type for search limit", input_var=limit)
+
+        body = {
+            "pageNumber": 0,
+            "pageSize": limit,
+            "query": query or "",
+            "includeTaskEntityType": True,
+            "includeWorkflow": True
+        }
+        if kwargs:
+            body.update(kwargs)
+        log.debug("Executing case search")
+        response = self._http_request(
+            url=self.url.cases_search_advanced,
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body=body
+        )
+        return response.json()
+
     def alert_fetch(self, alert_id, return_raw=False, **kwargs):
         alert_id = helpers.format_alert_id(alert_id)
         url = self.url.alert_fetch.format(alert_id)
@@ -1141,9 +1210,9 @@ class LogicHubAPI:
             if is_invalid is None:
                 raise exceptions.app.UnexpectedOutput('Unexpected response while validating query string.')
             elif is_invalid:
-                raise exceptions.validation.AlertQueryValidationError(response['result'].get('message'))
+                raise exceptions.app.AlertQueryValidationError(response['result'].get('message'))
 
-    def alerts_search_advanced(self, query: str = None, limit: int = None):
+    def alerts_search_advanced(self, query: str = None, limit: int = None, **kwargs):
         # Sanitize inputs
         limit = int(limit) if limit and int(limit) > 0 else self.DEFAULT_ALERT_RESULT_LIMIT
         query = query.strip() if query and query.strip() else ""
@@ -1157,6 +1226,8 @@ class LogicHubAPI:
             "sortOrder": "desc",
             "query": query
         }
+        if kwargs:
+            body.update(kwargs)
         log.debug("Searching alerts")
         response = self._http_request(
             url=self.url.alerts_search_advanced,
@@ -1196,17 +1267,46 @@ class LogicHubAPI:
         response = self._http_request(method="POST", url=self.url.user_delete, body=user_ids, input_var=user_ids)
         return response.json()
 
+    def create_user_group(self, name: str, users: list = None, **kwargs):
+        body = {"name": name, "users": users or [], **kwargs}
+        log.debug(f"Creating user: {name}")
+        response = self._http_request(method="POST", url=self.url.user_group_create, body=body, input_var=name)
+        return response.json()
+
+    def update_user_group(self, group_id: int, name: str, users: list = None, **kwargs):
+        body = {"name": name, "users": users or [], **kwargs}
+        log.debug(f"Creating user: {name}")
+        response = self._http_request(method="PATCH", url=self.url.user_group.format(group_id), body=body, input_var=name)
+        return response.json()
+
+    def get_password_settings(self):
+        log.debug("Fetching password settings")
+        response = self._http_request(url=self.url.get_password_settings)
+        return response.json()
+
+    def update_password_settings(self, settings_dict):
+        log.debug("Fetching password settings")
+        response = self._http_request(method="PATCH", url=self.url.update_password_settings, body=settings_dict)
+        return response.json()
+
 
 class FormattedObjects:
     def __init__(self, api: LogicHubAPI):
         self.__api = api
 
     @property
-    def system_field_lh_linked_alerts(self):
+    def version(self):
+        return super(self.__api).version
+
+    @property
+    def system_field_lh_linked_alerts(self) -> dict:
+        field = None
         for f in self.__api.fields['result']['data']:
             if f.get('fieldName') == 'lh_linked_alerts':
-                return f
-        raise exceptions.validation.VersionMinimumNotMet(min_version='m86', feature_label='linked alerts')
+                field = f
+                break
+        return field
+        # raise exceptions.validation.VersionMinimumNotMet(min_version='m86', feature_label='linked alerts')
 
     @property
     def system_field_lh_linked_alerts_id(self):
