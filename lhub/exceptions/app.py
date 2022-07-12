@@ -1,111 +1,100 @@
 from .base import LhBaseException
-from requests.exceptions import HTTPError
 
 
+# ToDo Rework exceptions just like I did for lhub_cli
 class BaseAppError(LhBaseException):
     """Base exception for failures from interacting with LogicHub itself, including custom HTTP errors"""
     message = "LogicHub returned an error"
 
-    def __init__(self, message=None, *args, **kwargs):
-        super().__init__(message or self.message, *args, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+class AlertQueryValidationError(BaseAppError):
+    """Invalid format for alert queries"""
+    message = 'Alert query is invalid'
+
+    def __init__(self, input_var, *args, **kwargs):
+        super().__init__(input_var=input_var, *args, **kwargs)
+
+
+class CaseQueryValidationError(BaseAppError):
+    """Invalid format for case queries"""
+    message = 'Case query is invalid'
+
+    def __init__(self, input_var, *args, **kwargs):
+        super().__init__(input_var=input_var, *args, **kwargs)
 
 
 class BatchNotFound(BaseAppError):
-    """Batch ID not found"""
+    """Batch/Batch ID not found"""
+    message = 'Batch not found'
 
-    __default_message = 'Batch not found'
-
-    def __init__(self, input_var, message=None, *args, **kwargs):
-        self.input = input_var
-        if self.input:
-            self.__default_message += f": {self.input}"
-        self.message = message or self.__default_message
-        super().__init__(self.message, *args, **kwargs)
+    def __init__(self, input_var, *args, **kwargs):
+        super().__init__(input_var=input_var, *args, **kwargs)
 
 
 class NotebookNotFound(BaseAppError):
     """Batch ID not found"""
+    message = 'Notebook not found'
 
-    __default_message = 'Notebook not found'
-
-    def __init__(self, input_var, message=None, *args, **kwargs):
-        self.input = input_var
-        if self.input:
-            self.__default_message += f": {self.input}"
-        self.message = message or self.__default_message
-        super().__init__(self.message, *args, **kwargs)
+    def __init__(self, input_var, *args, **kwargs):
+        super().__init__(input_var=input_var, *args, **kwargs)
 
 
 class RuleSetNotFound(BaseAppError):
     """Rule set not found for the given search criteria"""
+    message = 'Rule set not found'
 
-    __default_message = 'Rule set not found'
-
-    def __init__(self, input_var, message=None, *args, **kwargs):
-        self.input = input_var
-        if self.input:
-            self.__default_message += f": {self.input}"
-        self.message = message or self.__default_message
-        super().__init__(self.message, *args, **kwargs)
+    def __init__(self, input_var, *args, **kwargs):
+        super().__init__(input_var=input_var, *args, **kwargs)
 
 
 class StreamNotFound(BaseAppError):
     """Stream ID not found"""
+    message = 'Stream not found'
 
-    __default_message = 'Stream not found'
-
-    def __init__(self, input_var, message=None, *args, **kwargs):
-        self.input = input_var
-        if self.input:
-            self.__default_message += f": {self.input}"
-        self.message = message or self.__default_message
-        super().__init__(self.message, *args, **kwargs)
+    def __init__(self, input_var, *args, **kwargs):
+        super().__init__(input_var=input_var, *args, **kwargs)
 
 
 class UnexpectedOutput(BaseAppError):
-    """Authentication Failed"""
+    """Unexpected Output"""
+    message = 'Unexpected output returned'
 
-    __default_message = 'Unexpected output returned'
-
-    def __init__(self, message=None, *args, **kwargs):
-        self.message = message or self.__default_message
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
 
 class UserGroupNotFound(BaseAppError):
-    """User not found"""
+    """User group not found"""
+    message = 'User group not found'
 
-    __default_message = 'User group not found'
+    def __init__(self, input_var, *args, **kwargs):
+        super().__init__(input_var=input_var, *args, **kwargs)
 
-    def __init__(self, input_var, message=None, *args, **kwargs):
-        self.input = input_var
-        if self.input:
-            self.__default_message += f": {self.input}"
-        self.message = message or self.__default_message
-        super().__init__(self.message, *args, **kwargs)
+
+class UserGroupAlreadyExists(BaseAppError):
+    """User group already exists"""
+    message = 'User group already exists'
+
+    def __init__(self, input_var, *args, **kwargs):
+        super().__init__(input_var=input_var, *args, **kwargs)
 
 
 class UserNotFound(BaseAppError):
     """User not found"""
+    message = 'User not found'
 
-    __default_message = 'User not found'
-
-    def __init__(self, input_var, message=None, *args, **kwargs):
-        self.input = input_var
-        if self.input:
-            self.__default_message += f": {self.input}"
-        self.message = message or self.__default_message
-        super().__init__(self.message, *args, **kwargs)
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(input_var=user, *args, **kwargs)
 
 
 class UserAlreadyExists(BaseAppError):
-    """User not found"""
+    """User already exists"""
+    message = 'User already exists'
 
-    __default_message = 'User already exists'
-
-    def __init__(self, input_var, message=None, *args, **kwargs):
-        self.input = input_var
-        if self.input:
-            self.__default_message += f": {self.input}"
-        self.message = message or self.__default_message
-        super().__init__(self.message, *args, **kwargs)
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(input_var=user, *args, **kwargs)

@@ -5,45 +5,31 @@ from .app import BaseAppError
 
 class AuthFailure(BaseAppError):
     """Authentication Failed"""
+    message = 'Authentication or authorization failure'
 
-    __default_message = 'Authentication or authorization failure'
-
-    def __init__(self, message=None, *args, **kwargs):
-        self.message = message or self.__default_message
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
 
 class APIAuthFailure(AuthFailure):
-    """Authentication Failed"""
+    """API Token Authentication Failed"""
+    message = 'API key is invalid for URL'
 
-    __default_message = 'API key is invalid for URL'
-
-    def __init__(self, input_var, message=None, *args, **kwargs):
-        self.input = input_var
-        if self.input:
-            self.__default_message += f": {self.input}"
-        self.message = message or self.__default_message
-        super().__init__(self.message, *args, **kwargs)
+    def __init__(self, input_var, *args, **kwargs):
+        super().__init__(input_var=input_var, *args, **kwargs)
 
 
 class APIAuthNotAuthorized(AuthFailure):
-    """Authentication Failed"""
+    """API Token Auth Not Authorized"""
+    message = 'API token auth is not authorized, or token auth is not supported for the given URL'
 
-    __default_message = 'API auth not authorized or not supported for URL'
-
-    def __init__(self, input_var, message=None, *args, **kwargs):
-        self.input = input_var
-        if self.input:
-            self.__default_message += f": {self.input}"
-        self.message = message or self.__default_message
-        super().__init__(self.message, *args, **kwargs)
+    def __init__(self, input_var, *args, **kwargs):
+        super().__init__(input_var=input_var, *args, **kwargs)
 
 
 class PasswordAuthFailure(AuthFailure):
-    """Authentication Failed"""
+    """Password Authentication Failed"""
+    message = 'Password authentication or authorization failure'
 
-    __default_message = 'Authentication or authorization failure'
-
-    def __init__(self, message=None, *args, **kwargs):
-        self.message = message or self.__default_message
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

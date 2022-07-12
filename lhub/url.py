@@ -52,20 +52,22 @@ class URLs:
         return f"{self.base}/api/demo/batch-{{}}/correlations"
 
     @property
-    def _case_base_url(self):
+    def case(self):
         return f"{self.base}/api/case/{{case_id}}"
 
+    # ToDo Is this still relevant??
     @property
     def case_get_basic_details(self):
-        return f"{self._case_base_url}/basicDetails"
+        return f"{self.case}/basicDetails"
 
+    # ToDo Is this still relevant??
     @property
     def case_get_custom_fields(self):
-        return f"{self._case_base_url}/fields"
+        return f"{self.case}/fields"
 
     @property
     def case_update_linked_alerts(self):
-        return self._case_base_url
+        return self.case
 
     @property
     def case_status_list_workflows(self):
@@ -78,6 +80,14 @@ class URLs:
     @property
     def cases_get_prefix(self):
         return f"{self.base}/api/cases/prefix"
+
+    @property
+    def cases_search_advanced(self):
+        return f"{self.base}/api/cases/v2/search/advanced"
+
+    @property
+    def cases_search_validate(self):
+        return f"{self.base}/api/cases/search/validate"
 
     @property
     def command(self):
@@ -206,6 +216,10 @@ class URLs:
         return f"{self.base}/api/demo/hub/ruleSets"
 
     @property
+    def saml_configs(self):
+        return f"{self.base}/api/saml"
+
+    @property
     def stream_batches(self):
         return f"{self.base}/api/stream/stream-{{}}/batches/filter"
 
@@ -231,7 +245,23 @@ class URLs:
 
     @property
     def user_groups(self):
-        return f"{self.base}/api/user-management/user-group/search"
+        return f"{self.user_group_create}/search"
+
+    @property
+    def user_group(self):
+        return f"{self.user_group_create}/{{}}"
+
+    @property
+    def user_group_create(self):
+        return f"{self.base}/api/user-management/user-group"
+
+    @property
+    def user_group_delete(self):
+        return f"{self.user_group_create}/delete"
+
+    @property
+    def users(self):
+        return f"{self.base}/api/user-management/user/search"
 
     @property
     def user(self):
@@ -247,10 +277,6 @@ class URLs:
         return f"{self.base}/api/user-management/user/delete"
 
     @property
-    def users(self):
-        return f"{self.base}/api/user-management/user/search"
-
-    @property
     def version(self):
         return f"{self.base}/api/version"
 
@@ -259,3 +285,11 @@ class URLs:
     def widget_data(self):
         """Get widget data from a single dashboard's current state"""
         return f"{self.base}/api/dashboards/v2/{{dashboard_id}}/widget/{{widget_id}}/data"
+
+    @property
+    def get_password_settings(self):
+        return f"{self.base}/api/config/getPasswordSettings"
+
+    @property
+    def update_password_settings(self):
+        return f"{self.base}/api/config/setPasswordSettings"

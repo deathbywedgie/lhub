@@ -342,6 +342,11 @@ class Actions:
             output = {f['name']: {k: v for k, v in f.items() if k != 'name'} for f in output}
         return output
 
+    def list_saml_configs(self):
+        result = self.__api.list_saml_configs()
+        _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="list SAML configs")
+        return result["result"]
+
     def list_streams(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = 0, verify_stream_states=False):
         """
         List all streams (or streams matching a search filter)
@@ -375,7 +380,7 @@ class Actions:
 
         return results
 
-    def list_user_groups(self, hide_inactive=False):
+    def list_user_groups(self, hide_inactive=True):
         result = self.__api.list_user_groups(hide_inactive=hide_inactive)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list user groups", raise_errors=True)
         return result["result"]
@@ -396,8 +401,19 @@ class Actions:
         # would it be beneficial to make a class object for these instead of returning a dict?
         return user_attributes
 
-    def list_users(self, hide_inactive=True, simple_format=False):
-        result = self.__api.list_users(hide_inactive=hide_inactive)
+    def list_users(self, hide_inactive=True, simple_format=False, **filters):
+        if not filters:
+            print(f"\n\nVersion: {self.__api.version}\n\n")
+            if self.__api.major_version < 96:
+                filters = {"hide_inactive": hide_inactive}
+            else:
+                filters["inactiveUsers"] = "all"
+                if hide_inactive is True:
+                    filters["inactiveUsers"] = "onlyActive"
+
+        # result = self.__api.list_users(hide_inactive=hide_inactive)
+        # print(f"\n\n----\n{json.dumps(result)}\n----\n\n")
+        result = self.__api.list_users(**filters)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list users", raise_errors=True)
         results = result["result"]
         result_count = len(results['data'])
@@ -460,6 +476,15 @@ class Actions:
                 for alert in alerts
             ]
         return output
+
+    # ToDo Expand on this. Offer a simple format, fetch details, etc.
+    def search_cases_advanced(self, query: str = None, limit: int = None, **kwargs):
+        # Validate the query first, just as the UI would do
+        self.__api.cases_search_validate(query)
+
+        result = self.__api.case_search_advanced(query=query, limit=limit, **kwargs)
+        _ = self._result_dict_has_schema(result, "result", "data", action_description="search cases", raise_errors=True)
+        return result["result"]["data"]
 
     def pause_stream(self, stream_id):
         result = self.__api.stream_pause(stream_id=stream_id)
@@ -535,15 +560,27 @@ class Actions:
         user_ids = []
         for u in (usernames if isinstance(usernames, list) else [usernames]):
             if u not in _users:
-                raise UserNotFound(input_var=u)
+                log.error(f"User not found: {u}")
+                raise UserNotFound(user=u)
             _user_id = helpers.format_user_id(_users[u])
             log.debug(f"Translated user {u} to ID {_user_id}")
             user_ids.append(_user_id)
         return self.delete_user_by_id(user_ids=user_ids)
 
+    def get_password_settings(self) -> dict:
+        result = self.__api.get_password_settings()
+        _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="get password settings")
+        return result["result"]
+
+    def update_password_settings(self, settings_dict):
+        result = self.__api.update_password_settings(settings_dict=settings_dict)
+        _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="update password settings")
+        return result["result"]
+
 
 class LogicHub:
     verify_ssl = True
+    http_timeout_default = LogicHubAPI.http_timeout_default
 
     def __init__(
             self, hostname, api_key=None, username=None, password=None,
@@ -557,7 +594,7 @@ class LogicHub:
         self.kwargs = kwargs
         self.api = LogicHubAPI(
             hostname=hostname, api_key=api_key, username=username, password=password,
-            cache_seconds=cache_seconds, default_timeout=default_timeout,
+            cache_seconds=cache_seconds, default_timeout=default_timeout or self.http_timeout_default,
             logger=logger, **kwargs)
         self.actions = Actions(self.api)
         if verify_api_auth:
