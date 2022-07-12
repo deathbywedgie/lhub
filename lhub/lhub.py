@@ -342,6 +342,11 @@ class Actions:
             output = {f['name']: {k: v for k, v in f.items() if k != 'name'} for f in output}
         return output
 
+    def list_saml_configs(self):
+        result = self.__api.list_saml_configs()
+        _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="list SAML configs")
+        return result["result"]
+
     def list_streams(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = 0, verify_stream_states=False):
         """
         List all streams (or streams matching a search filter)
