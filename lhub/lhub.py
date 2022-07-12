@@ -375,7 +375,7 @@ class Actions:
 
         return results
 
-    def list_user_groups(self, hide_inactive=False):
+    def list_user_groups(self, hide_inactive=True):
         result = self.__api.list_user_groups(hide_inactive=hide_inactive)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list user groups", raise_errors=True)
         return result["result"]
