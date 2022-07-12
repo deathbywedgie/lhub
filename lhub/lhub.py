@@ -477,6 +477,15 @@ class Actions:
             ]
         return output
 
+    # ToDo Expand on this. Offer a simple format, fetch details, etc.
+    def search_cases_advanced(self, query: str = None, limit: int = None, **kwargs):
+        # Validate the query first, just as the UI would do
+        self.__api.cases_search_validate(query)
+
+        result = self.__api.case_search_advanced(query=query, limit=limit, **kwargs)
+        _ = self._result_dict_has_schema(result, "result", "data", action_description="search cases", raise_errors=True)
+        return result["result"]["data"]
+
     def pause_stream(self, stream_id):
         result = self.__api.stream_pause(stream_id=stream_id)
         _ = self._result_dict_has_schema(result, "result", action_description="pause stream", raise_errors=True, accept_null=True)
@@ -551,15 +560,27 @@ class Actions:
         user_ids = []
         for u in (usernames if isinstance(usernames, list) else [usernames]):
             if u not in _users:
-                raise UserNotFound(input_var=u)
+                log.error(f"User not found: {u}")
+                raise UserNotFound(user=u)
             _user_id = helpers.format_user_id(_users[u])
             log.debug(f"Translated user {u} to ID {_user_id}")
             user_ids.append(_user_id)
         return self.delete_user_by_id(user_ids=user_ids)
 
+    def get_password_settings(self) -> dict:
+        result = self.__api.get_password_settings()
+        _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="get password settings")
+        return result["result"]
+
+    def update_password_settings(self, settings_dict):
+        result = self.__api.update_password_settings(settings_dict=settings_dict)
+        _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="update password settings")
+        return result["result"]
+
 
 class LogicHub:
     verify_ssl = True
+    http_timeout_default = LogicHubAPI.http_timeout_default
 
     def __init__(
             self, hostname, api_key=None, username=None, password=None,
@@ -573,7 +594,7 @@ class LogicHub:
         self.kwargs = kwargs
         self.api = LogicHubAPI(
             hostname=hostname, api_key=api_key, username=username, password=password,
-            cache_seconds=cache_seconds, default_timeout=default_timeout,
+            cache_seconds=cache_seconds, default_timeout=default_timeout or self.http_timeout_default,
             logger=logger, **kwargs)
         self.actions = Actions(self.api)
         if verify_api_auth:
