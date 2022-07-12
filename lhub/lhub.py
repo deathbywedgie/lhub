@@ -401,8 +401,19 @@ class Actions:
         # would it be beneficial to make a class object for these instead of returning a dict?
         return user_attributes
 
-    def list_users(self, hide_inactive=True, simple_format=False):
-        result = self.__api.list_users(hide_inactive=hide_inactive)
+    def list_users(self, hide_inactive=True, simple_format=False, **filters):
+        if not filters:
+            print(f"\n\nVersion: {self.__api.version}\n\n")
+            if self.__api.major_version < 96:
+                filters = {"hide_inactive": hide_inactive}
+            else:
+                filters["inactiveUsers"] = "all"
+                if hide_inactive is True:
+                    filters["inactiveUsers"] = "onlyActive"
+
+        # result = self.__api.list_users(hide_inactive=hide_inactive)
+        # print(f"\n\n----\n{json.dumps(result)}\n----\n\n")
+        result = self.__api.list_users(**filters)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list users", raise_errors=True)
         results = result["result"]
         result_count = len(results['data'])
