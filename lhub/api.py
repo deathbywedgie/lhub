@@ -1368,7 +1368,11 @@ class FormattedObjects:
 
     @property
     def users(self):
-        response = self.__api.list_users(limit=None, hide_inactive=True)
+        if self.__api.major_version < 96:
+            kwargs = {"hide_inactive": True}
+        else:
+            kwargs = {"inactiveUsers": "onlyActive"}
+        response = self.__api.list_users(limit=None, **kwargs)
         return response['result']['data']
 
     @property
