@@ -156,6 +156,12 @@ class Actions:
     def get_case_prefix(self):
         return self.__api.case_prefix
 
+    def get_connection_status_by_id(self, connection_ids: list):
+        connection_ids = list(set([helpers.format_connection_id(c) for c in connection_ids]))
+        status_results = self.__api.get_connection_status(connection_ids)
+        statuses = {helpers.format_connection_id(status["connectionEntityId"]): status["status"] for status in status_results['result']}
+        return statuses
+
     # ToDo Token auth not supported as of 2022-03-09 (m92)
     def get_dashboard_data(self, dashboard_id):
         result = self.__api.get_dashboard_data(dashboard_id.strip())
@@ -247,11 +253,10 @@ class Actions:
 
         connections = result["data"]
         connection_ids = [connection["id"]["id"] for connection in connections]
-        status_results = self.__api.get_connection_status(connection_ids)
-        statuses = {status["connectionEntityId"].replace("connection-", ''): status["status"] for status in status_results['result']}
+        statuses = self.get_connection_status_by_id(connection_ids)
         for n in range(len(connections)):
             connection = connections[n]
-            connection_id = str(connection["id"]["id"])
+            connection_id = int(connection["id"]["id"])
             connection["status"] = statuses.get(connection_id)
             if not connection["status"]:
                 raise BaseAppError(f"Connection ID {connection_id} missing from status list")
@@ -280,6 +285,25 @@ class Actions:
         if not include_not_imported:
             result = [r for r in result if r['metadata']["contentRepoStatus"] != "Global"]
         return result
+
+    def list_event_types(self, limit=None, wait_for_connection_status=False):
+        results = self.__api.list_event_types(limit=limit)
+        if not wait_for_connection_status:
+            return results
+        connection_ids = []
+        for r in results:
+            try:
+                connection_ids.append(f'connection-{helpers.format_connection_id(r["origin"]["id"]["id"])}')
+            except KeyError:
+                pass
+        statuses = self.get_connection_status_by_id(list(set(connection_ids)))
+        for r in results:
+            try:
+                if r["origin"]["id"]["id"]:
+                    r["origin"]["connectionStatus"] = r["eventTypeConnectionStatus"] = statuses[int(r["origin"]["id"]["id"])]
+            except KeyError:
+                pass
+        return results
 
     def list_fields(self, map_mode=None):
         assert not map_mode or map_mode in ['id', 'name'], f'Invalid output format: {map_mode}'
@@ -403,7 +427,6 @@ class Actions:
 
     def list_users(self, hide_inactive=True, simple_format=False, **filters):
         if not filters:
-            print(f"\n\nVersion: {self.__api.version}\n\n")
             if self.__api.major_version < 96:
                 filters = {"hide_inactive": hide_inactive}
             else:
@@ -411,8 +434,6 @@ class Actions:
                 if hide_inactive is True:
                     filters["inactiveUsers"] = "onlyActive"
 
-        # result = self.__api.list_users(hide_inactive=hide_inactive)
-        # print(f"\n\n----\n{json.dumps(result)}\n----\n\n")
         result = self.__api.list_users(**filters)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list users", raise_errors=True)
         results = result["result"]
