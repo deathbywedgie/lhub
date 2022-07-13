@@ -25,6 +25,14 @@ class InvalidCaseIdFormat(BaseFormatError):
         super().__init__(input_var=input_var, *args, **kwargs)
 
 
+class InvalidConnectionIdFormat(BaseFormatError):
+    """Invalid format for connection ID"""
+    message = 'Invalid format for connection ID'
+
+    def __init__(self, input_var, *args, **kwargs):
+        super().__init__(input_var=input_var, *args, **kwargs)
+
+
 class InvalidNotebookIdFormat(BaseFormatError):
     """Invalid format for notebook IDs"""
     message = 'Invalid format for notebook ID'
