@@ -972,7 +972,7 @@ class LogicHubAPI:
         )
         return response.json()
 
-    def list_users_v1_up_to_m95(self, limit=None, hide_inactive=True):
+    def __list_users_v1_up_to_m95(self, limit=None, hide_inactive=True):
         limit = limit if limit and isinstance(limit, int) else 99999
         params = {"pageSize": limit, "after": 0}
         body = {"filters": []}
@@ -989,7 +989,7 @@ class LogicHubAPI:
         )
         return response.json()
 
-    def list_users_v2_from_m96(self, limit=None, **kwargs):
+    def __list_users_v2_from_m96(self, limit=None, **kwargs):
         limit = limit if limit and isinstance(limit, int) else 99999
         params = {"pageSize": limit, "after": 0}
         body = {"filters": []}
@@ -1011,9 +1011,9 @@ class LogicHubAPI:
             raise DeprecationWarning("The \"hideInactive\" filter is no longer valid since LogicHub version m96")
 
         if self.major_version <= 95:
-            func = self.list_users_v1_up_to_m95
+            func = self.__list_users_v1_up_to_m95
         else:
-            func = self.list_users_v2_from_m96
+            func = self.__list_users_v2_from_m96
         return func(limit=limit, **kwargs)
 
     def list_workflows(self):
