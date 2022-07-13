@@ -138,6 +138,7 @@ class URLs:
     def dashboards(self):
         """List all dashboards"""
         return f"{self.base}/api/dashboards/v2"
+
     @property
     def dashboards_and_widgets(self):
         """
