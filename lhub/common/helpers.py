@@ -38,6 +38,16 @@ def format_case_id_with_prefix(case_id, case_prefix):
 
 
 @dispatch(Number)
+def format_connection_id(var):
+    return int(var)
+
+
+@dispatch(str)
+def format_connection_id(var):
+    return __id_string_to_int(var, formatting.InvalidConnectionIdFormat(input_var=var))
+
+
+@dispatch(Number)
 def format_notebook_id(var):
     return int(var)
 
