@@ -1399,6 +1399,5 @@ class FormattedObjects:
         return {u['name']: u for u in users}
 
     def get_username_by_id(self, user_id):
-        # user = self.users_by_id.get(user_id)
         user = self.__api.get_user_by_id(user_id)
         return user["result"]["username"]
