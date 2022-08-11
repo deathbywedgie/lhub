@@ -1061,6 +1061,13 @@ class LogicHubAPI:
                 log.debug(f"Current user updated to {self.__username} [ID: {self.__user_id}, role: {self.__user_role}]")
         return result
 
+    def update_user(self, user_id, change_note=None, **user_kwargs):
+        if not user_kwargs:
+            raise exceptions.validation.InputValidationError("User update requested, but no changes provided")
+        log.debug("Patching user" + (f" ({change_note})" if change_note else ""))
+        response = self._http_request(method="PATCH", url=self.url.user.format(user_id), body=user_kwargs, input_var=user_id)
+        return response.json()
+
     def update_current_user_preferences(self, preferences):
         log.debug("Patching user (updating preferences)")
         response = self._http_request(method="PATCH", url=self.url.user.format(self.session_user_id), body={"preferences": preferences}, input_var=self.session_user_id)
