@@ -23,6 +23,16 @@ def format_alert_id(var):
 
 
 @dispatch(Number)
+def format_batch_id(var):
+    return int(var)
+
+
+@dispatch(str)
+def format_batch_id(var):
+    return __id_string_to_int(var, formatting.InvalidBatchIdFormat(input_var=var))
+
+
+@dispatch(Number)
 def format_case_id(var):
     return int(var)
 
