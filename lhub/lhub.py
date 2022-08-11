@@ -412,10 +412,12 @@ class Actions:
     @staticmethod
     def __reformat_user_simple(user: dict):
         groups = [g['name'] for g in user['groups'] if not g.get("isDeleted", False)]
+        group_ids = [g['id'] for g in user['groups'] if not g.get("isDeleted", False)]
         user_attributes = {
             "username": user.get("name"),
             "is_admin": user["role"]["value"] == "admin",
             "groups": ', '.join(groups),
+            "group_ids": group_ids,
             "email": user.get("email"),
             "is_deleted": user.get("isDeleted"),
             "is_enabled": user.get("isEnabled"),
