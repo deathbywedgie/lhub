@@ -209,6 +209,10 @@ class URLs:
         return f"{self.base}/api/content-management/content/playbook"
 
     @property
+    def playbook_versions(self):
+        return f"{self.base}/api/flow/flow-{{}}/versions"
+
+    @property
     def rule_set(self):
         return f"{self.base}/api/demo/ruleSet-{{}}"
 
@@ -276,6 +280,11 @@ class URLs:
     @property
     def user_delete(self):
         return f"{self.base}/api/user-management/user/delete"
+
+    @property
+    def user_legacy(self):
+        # For looking up user by ID, or for password resets
+        return f"{self.base}/api/demo/user-{{}}"
 
     @property
     def version(self):
