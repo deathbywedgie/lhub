@@ -445,6 +445,14 @@ class Actions:
             results = [self.__reformat_user_simple(result) for result in results['data']]
         return results
 
+    def reset_password(self, user_id):
+        user_id = helpers.format_user_id(user_id)
+        username = self.__api.formatted.get_username_by_id(user_id)
+        log.debug(f"Resetting password for user: {username}")
+        result = self.__api.reset_password(user_id=user_id)
+        _ = self._result_dict_has_schema(result, "result", "password", action_description="reset password", raise_errors=True)
+        return result["result"]["password"]
+
     def list_workflows(self):
         result = self.__api.list_workflows()
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list workflows", raise_errors=True)
