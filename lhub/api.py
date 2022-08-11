@@ -1322,6 +1322,16 @@ class LogicHubAPI:
         response = self._http_request(method="PATCH", url=self.url.update_password_settings, body=settings_dict)
         return response.json()
 
+    def reset_password(self, user_id):
+        log.debug(f"Resetting password for user ID: {user_id}")
+        response = self._http_request(method="POST", url=self.url.user_legacy.format(user_id), body={"method": "regeneratePassword", "parameters": {}})
+        return response.json()
+
+    def get_user_by_id(self, user_id):
+        log.debug(f"Fetching user detail from ID: {user_id}")
+        response = self._http_request(url=self.url.user_legacy.format(user_id))
+        return response.json()
+
 
 class FormattedObjects:
     def __init__(self, api: LogicHubAPI):
@@ -1389,3 +1399,8 @@ class FormattedObjects:
     def users_by_name(self):
         users = self.users
         return {u['name']: u for u in users}
+
+    def get_username_by_id(self, user_id):
+        # user = self.users_by_id.get(user_id)
+        user = self.__api.get_user_by_id(user_id)
+        return user["result"]["username"]
