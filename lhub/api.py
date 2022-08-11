@@ -978,7 +978,6 @@ class LogicHubAPI:
         body = {"filters": []}
         if hide_inactive:
             body['filters'].append({"hideInactive": True})
-        log.debug(f"TEMP -- body: {json.dumps(body)}")
         log.debug("Fetching users")
         response = self._http_request(
             url=self.url.users,
@@ -995,7 +994,6 @@ class LogicHubAPI:
         body = {"filters": []}
         if kwargs:
             body["filters"].append(kwargs)
-        log.debug(f"TEMP -- body: {json.dumps(body)}")
         log.debug("Fetching users")
         response = self._http_request(
             url=self.url.users,
