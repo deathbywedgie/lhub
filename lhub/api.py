@@ -430,7 +430,7 @@ class LogicHubAPI:
             "after": int(offset or 0),
         }
         body = {"status": statuses or [], "excludeBatchesWithZeroEvents": exclude_empty_results}
-        log.debug("Fetching batches")
+        log.debug(f"Fetching batches for stream: {stream_id}")
         response = self._http_request(method="POST", url=self.url.stream_batches.format(stream_id), params=params, body=body, input_var=stream_id)
         return response.json()
 
