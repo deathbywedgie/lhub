@@ -1069,9 +1069,7 @@ class LogicHubAPI:
         return response.json()
 
     def update_current_user_preferences(self, preferences):
-        log.debug("Patching user (updating preferences)")
-        response = self._http_request(method="PATCH", url=self.url.user.format(self.session_user_id), body={"preferences": preferences}, input_var=self.session_user_id)
-        return response.json()
+        return self.update_user(user_id=self.session_user_id, change_note="updating preferences", preferences=preferences)
 
     def case_prefix_refresh(self):
         _ = self.cases_get_prefix()
