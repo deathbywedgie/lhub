@@ -891,6 +891,13 @@ class LogicHubAPI:
         )
         return response.json()
 
+    def get_playbook_versions(self, playbook_id, limit=25, offset=0):
+        limit = int(limit if limit is not None and limit > 0 else 25)
+        offset = offset or 0
+        log.debug(f"Fetching up to {limit} versions for playbook {playbook_id}")
+        response = self._http_request(self.url.playbook_versions.format(playbook_id), params={"offset": offset, "limit": limit})
+        return response.json()
+
     # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
     def list_rule_sets(self, limit=None):
         """
