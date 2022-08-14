@@ -244,6 +244,12 @@ class Actions:
             results = [self.__reformat_command_simple(r) for r in results['data']]
         return results
 
+    def list_case_types(self, limit: int = None, after: int = None, exclude_deprecated: bool = None):
+        result = self.__api.list_case_types(limit=limit, after=after, exclude_deprecated=exclude_deprecated)
+        _ = self._result_dict_has_schema(result, "result", "data", action_description="list case types", raise_errors=True)
+        result = result["result"]["data"]
+        return result
+
     def list_connections(self, filters=None, add_status=False):
         result = self.__api.list_connections(filters=filters)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list connections", raise_errors=True)
@@ -366,6 +372,11 @@ class Actions:
             output = {f['name']: {k: v for k, v in f.items() if k != 'name'} for f in output}
         return output
 
+    def get_playbook_versions(self, playbook_id, **kwargs):
+        response = self.__api.get_playbook_versions(playbook_id=playbook_id, **kwargs)
+        _ = self._result_dict_has_schema(response, "result", "data")
+        return response["result"]["data"]
+
     def list_saml_configs(self):
         result = self.__api.list_saml_configs()
         _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="list SAML configs")
@@ -412,10 +423,12 @@ class Actions:
     @staticmethod
     def __reformat_user_simple(user: dict):
         groups = [g['name'] for g in user['groups'] if not g.get("isDeleted", False)]
+        group_ids = [g['id'] for g in user['groups'] if not g.get("isDeleted", False)]
         user_attributes = {
             "username": user.get("name"),
             "is_admin": user["role"]["value"] == "admin",
             "groups": ', '.join(groups),
+            "group_ids": group_ids,
             "email": user.get("email"),
             "is_deleted": user.get("isDeleted"),
             "is_enabled": user.get("isEnabled"),
@@ -442,6 +455,14 @@ class Actions:
         if simple_format:
             results = [self.__reformat_user_simple(result) for result in results['data']]
         return results
+
+    def reset_password(self, user_id):
+        user_id = helpers.format_user_id(user_id)
+        username = self.__api.formatted.get_username_by_id(user_id)
+        log.debug(f"Resetting password for user: {username}")
+        result = self.__api.reset_password(user_id=user_id)
+        _ = self._result_dict_has_schema(result, "result", "password", action_description="reset password", raise_errors=True)
+        return result["result"]["password"]
 
     def list_workflows(self):
         result = self.__api.list_workflows()

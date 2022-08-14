@@ -90,6 +90,10 @@ class URLs:
         return f"{self.base}/api/cases/search/validate"
 
     @property
+    def case_types(self):
+        return f"{self.base}/api/case-types"
+
+    @property
     def command(self):
         return f"{self.base}/commands/{{}}"
 
@@ -147,6 +151,10 @@ class URLs:
         :return:
         """
         return f"{self.base}/api/content-exchange/browse/Dashboard"
+
+    @property
+    def entities_search(self):
+        return f"{self.base}/api/search/entities/{{}}"
 
     @property
     def event_types(self):
@@ -209,6 +217,10 @@ class URLs:
         return f"{self.base}/api/content-management/content/playbook"
 
     @property
+    def playbook_versions(self):
+        return f"{self.base}/api/flow/flow-{{}}/versions"
+
+    @property
     def rule_set(self):
         return f"{self.base}/api/demo/ruleSet-{{}}"
 
@@ -266,7 +278,7 @@ class URLs:
 
     @property
     def user(self):
-        # For setting user preferences, not for fetching them. To fetch them, use the "me" call (/api/user-management/me)
+        # For updating user preferences & settings, not for fetching them. To fetch them, use the "me" call (/api/user-management/me)
         return f"{self.base}/api/user-management/user/{{}}"
 
     @property
@@ -276,6 +288,11 @@ class URLs:
     @property
     def user_delete(self):
         return f"{self.base}/api/user-management/user/delete"
+
+    @property
+    def user_legacy(self):
+        # For looking up user by ID, or for password resets
+        return f"{self.base}/api/demo/user-{{}}"
 
     @property
     def version(self):

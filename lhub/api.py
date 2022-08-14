@@ -430,7 +430,7 @@ class LogicHubAPI:
             "after": int(offset or 0),
         }
         body = {"status": statuses or [], "excludeBatchesWithZeroEvents": exclude_empty_results}
-        log.debug("Fetching batches")
+        log.debug(f"Fetching batches for stream: {stream_id}")
         response = self._http_request(method="POST", url=self.url.stream_batches.format(stream_id), params=params, body=body, input_var=stream_id)
         return response.json()
 
@@ -678,6 +678,44 @@ class LogicHubAPI:
         response = self._http_request(method="POST", url=self.url.baselines, params=params, body=body)
         return response.json()
 
+    def list_case_types(self, limit=None, after=0, exclude_deprecated: bool = True):
+        """
+        List all case types
+
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :param after: Used for pagination if you want to pull in chunks, this sets the result number to start after
+        :param exclude_deprecated: Exclude deprecated case types (default: True)
+        :return:
+        """
+        limit = int(limit if limit and limit > 0 else 999999999)
+        params = {
+            "pageSize": limit,
+            "excludeDeprecated": str(exclude_deprecated or True).lower(),
+            "after": after or 0,
+        }
+        log.debug("Fetching case types")
+        response = self._http_request(url=self.url.case_types, params=params)
+        return response.json()
+
+    def search_entities(self, entity_type: str, query: str = None, limit: int = None, offset: int = 0):
+        """
+        Search content entities
+
+        :param entity_type: type of entity to search (such as "eventTypes" or "connections")
+        :param query: Search query (default: all entities of the given type)
+        :param limit: Result limit (default: None)
+        :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
+        :return:
+        """
+        body = {
+            "query": query or "*",
+            "pageSize": int(limit if limit and limit > 0 else 999999999),
+            "page": offset
+        }
+        log.debug(f"Searching entities of type: {entity_type}")
+        response = self._http_request(method="POST", url=self.url.entities_search.format(entity_type), body=body)
+        return response.json()
+
     def list_commands(self, limit=None, offset=0, filters=None):
         """
         List all Commands
@@ -891,6 +929,13 @@ class LogicHubAPI:
         )
         return response.json()
 
+    def get_playbook_versions(self, playbook_id, limit=25, offset=0):
+        limit = int(limit if limit is not None and limit > 0 else 25)
+        offset = offset or 0
+        log.debug(f"Fetching up to {limit} versions for playbook {playbook_id}")
+        response = self._http_request(self.url.playbook_versions.format(playbook_id), params={"offset": offset, "limit": limit})
+        return response.json()
+
     # ToDo STILL DOES NOT WORK WITH API AUTH AS OF M91
     def list_rule_sets(self, limit=None):
         """
@@ -978,7 +1023,6 @@ class LogicHubAPI:
         body = {"filters": []}
         if hide_inactive:
             body['filters'].append({"hideInactive": True})
-        log.debug(f"TEMP -- body: {json.dumps(body)}")
         log.debug("Fetching users")
         response = self._http_request(
             url=self.url.users,
@@ -995,7 +1039,6 @@ class LogicHubAPI:
         body = {"filters": []}
         if kwargs:
             body["filters"].append(kwargs)
-        log.debug(f"TEMP -- body: {json.dumps(body)}")
         log.debug("Fetching users")
         response = self._http_request(
             url=self.url.users,
@@ -1063,10 +1106,15 @@ class LogicHubAPI:
                 log.debug(f"Current user updated to {self.__username} [ID: {self.__user_id}, role: {self.__user_role}]")
         return result
 
-    def update_current_user_preferences(self, preferences):
-        log.debug("Patching user (updating preferences)")
-        response = self._http_request(method="PATCH", url=self.url.user.format(self.session_user_id), body={"preferences": preferences}, input_var=self.session_user_id)
+    def update_user(self, user_id, change_note=None, **user_kwargs):
+        if not user_kwargs:
+            raise exceptions.validation.InputValidationError("User update requested, but no changes provided")
+        log.debug("Patching user" + (f" ({change_note})" if change_note else ""))
+        response = self._http_request(method="PATCH", url=self.url.user.format(user_id), body=user_kwargs, input_var=user_id)
         return response.json()
+
+    def update_current_user_preferences(self, preferences):
+        return self.update_user(user_id=self.session_user_id, change_note="updating preferences", preferences=preferences)
 
     def case_prefix_refresh(self):
         _ = self.cases_get_prefix()
@@ -1317,6 +1365,16 @@ class LogicHubAPI:
         response = self._http_request(method="PATCH", url=self.url.update_password_settings, body=settings_dict)
         return response.json()
 
+    def reset_password(self, user_id):
+        log.debug(f"Resetting password for user ID: {user_id}")
+        response = self._http_request(method="POST", url=self.url.user_legacy.format(user_id), body={"method": "regeneratePassword", "parameters": {}})
+        return response.json()
+
+    def get_user_by_id(self, user_id):
+        log.debug(f"Fetching user detail from ID: {user_id}")
+        response = self._http_request(url=self.url.user_legacy.format(user_id))
+        return response.json()
+
 
 class FormattedObjects:
     def __init__(self, api: LogicHubAPI):
@@ -1384,3 +1442,7 @@ class FormattedObjects:
     def users_by_name(self):
         users = self.users
         return {u['name']: u for u in users}
+
+    def get_username_by_id(self, user_id):
+        user = self.__api.get_user_by_id(user_id)
+        return user["result"]["username"]

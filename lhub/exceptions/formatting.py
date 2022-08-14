@@ -17,6 +17,14 @@ class InvalidAlertIdFormat(BaseFormatError):
         super().__init__(input_var=input_var, *args, **kwargs)
 
 
+class InvalidBatchIdFormat(BaseFormatError):
+    """Invalid format for batch ID"""
+    message = 'Invalid format for batch ID'
+
+    def __init__(self, input_var, *args, **kwargs):
+        super().__init__(input_var=input_var, *args, **kwargs)
+
+
 class InvalidCaseIdFormat(BaseFormatError):
     """Invalid format for case ID"""
     message = 'Invalid format for case ID'
