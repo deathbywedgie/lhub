@@ -678,6 +678,44 @@ class LogicHubAPI:
         response = self._http_request(method="POST", url=self.url.baselines, params=params, body=body)
         return response.json()
 
+    def list_case_types(self, limit=None, after=0, exclude_deprecated: bool = True):
+        """
+        List all case types
+
+        :param limit: None by default, although the LogicHub UI defaults to 25
+        :param after: Used for pagination if you want to pull in chunks, this sets the result number to start after
+        :param exclude_deprecated: Exclude deprecated case types (default: True)
+        :return:
+        """
+        limit = int(limit if limit and limit > 0 else 999999999)
+        params = {
+            "pageSize": limit,
+            "excludeDeprecated": str(exclude_deprecated or True).lower(),
+            "after": after or 0,
+        }
+        log.debug("Fetching case types")
+        response = self._http_request(url=self.url.case_types, params=params)
+        return response.json()
+
+    def search_entities(self, entity_type: str, query: str = None, limit: int = None, offset: int = 0):
+        """
+        Search content entities
+
+        :param entity_type: type of entity to search (such as "eventTypes" or "connections")
+        :param query: Search query (default: all entities of the given type)
+        :param limit: Result limit (default: None)
+        :param offset: Used for pagination if you want to pull in chunks, this sets the page number to pull
+        :return:
+        """
+        body = {
+            "query": query or "*",
+            "pageSize": int(limit if limit and limit > 0 else 999999999),
+            "page": offset
+        }
+        log.debug(f"Searching entities of type: {entity_type}")
+        response = self._http_request(method="POST", url=self.url.entities_search.format(entity_type), body=body)
+        return response.json()
+
     def list_commands(self, limit=None, offset=0, filters=None):
         """
         List all Commands

@@ -90,6 +90,10 @@ class URLs:
         return f"{self.base}/api/cases/search/validate"
 
     @property
+    def case_types(self):
+        return f"{self.base}/api/case-types"
+
+    @property
     def command(self):
         return f"{self.base}/commands/{{}}"
 
@@ -147,6 +151,10 @@ class URLs:
         :return:
         """
         return f"{self.base}/api/content-exchange/browse/Dashboard"
+
+    @property
+    def entities_search(self):
+        return f"{self.base}/api/search/entities/{{}}"
 
     @property
     def event_types(self):

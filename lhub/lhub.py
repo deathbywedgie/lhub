@@ -244,6 +244,12 @@ class Actions:
             results = [self.__reformat_command_simple(r) for r in results['data']]
         return results
 
+    def list_case_types(self, limit: int = None, after: int = None, exclude_deprecated: bool = None):
+        result = self.__api.list_case_types(limit=limit, after=after, exclude_deprecated=exclude_deprecated)
+        _ = self._result_dict_has_schema(result, "result", "data", action_description="list case types", raise_errors=True)
+        result = result["result"]["data"]
+        return result
+
     def list_connections(self, filters=None, add_status=False):
         result = self.__api.list_connections(filters=filters)
         _ = self._result_dict_has_schema(result, "result", "data", action_description="list connections", raise_errors=True)
@@ -365,6 +371,11 @@ class Actions:
         elif map_mode == "name":
             output = {f['name']: {k: v for k, v in f.items() if k != 'name'} for f in output}
         return output
+
+    def get_playbook_versions(self, playbook_id, **kwargs):
+        response = self.__api.get_playbook_versions(playbook_id=playbook_id, **kwargs)
+        _ = self._result_dict_has_schema(response, "result", "data")
+        return response["result"]["data"]
 
     def list_saml_configs(self):
         result = self.__api.list_saml_configs()
