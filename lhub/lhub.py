@@ -208,7 +208,7 @@ class Actions:
                     log.warning(f"Expected recent batches in 'data' key of stream state, but no such key was found for stream {_stream_id}")
         return results
 
-    def list_baselines(self):
+    def list_baselines(self, verify_stream_states=False):
         result = self.__api.list_baselines()
         _ = self._result_dict_has_schema(result, "result", "data", "data", raise_errors=True, action_description="list baselines")
         result = result["result"]["data"]
@@ -221,6 +221,9 @@ class Actions:
             b = baselines[n]
             _id = int(b['id']['id'])
             baselines[n]['baseline_config_status'] = state_map.get(f"stream-{b['id']['id']}")
+
+        if verify_stream_states is True:
+            self.__update_stream_results_with_status(result["data"])
         return result
 
     @staticmethod
@@ -382,6 +385,18 @@ class Actions:
         _ = self._result_dict_has_schema(result, "result", raise_errors=True, action_description="list SAML configs")
         return result["result"]
 
+    def __update_stream_results_with_status(self, results):
+        id_list = helpers.format_stream_id(results)
+        states = self.list_stream_states(stream_ids=id_list, include_recent_batches=False, return_as_simple_dict=True)
+        for r in results:
+            if not r.get('id') or not r['id'].get('id'):
+                raise UnexpectedOutput(f"stream dict did not match expected format: {r}")
+            _id_str = f"stream-{r['id']['id']}"
+            _id_str = f"stream-{r['id']['id']}"
+            if not states.get(_id_str):
+                raise UnexpectedOutput(f"{_id_str} was returned in the stream search but was not present in state search results")
+            r['streamStatus'] = states[_id_str]
+
     def list_streams(self, search_text: str = None, filters: list = None, limit: int = None, offset: int = 0, verify_stream_states=False):
         """
         List all streams (or streams matching a search filter)
@@ -402,16 +417,7 @@ class Actions:
         _ = self._result_dict_has_schema(result, "result", "data", "data", raise_errors=True, action_description="list streams")
         results = result["result"]["data"]["data"]
         if verify_stream_states is True:
-            id_list = helpers.format_stream_id(results)
-            states = self.list_stream_states(stream_ids=id_list, include_recent_batches=False, return_as_simple_dict=True)
-            for r in results:
-                if not r.get('id') or not r['id'].get('id'):
-                    raise UnexpectedOutput(f"stream dict did not match expected format: {r}")
-                _id_str = f"stream-{r['id']['id']}"
-                _id_str = f"stream-{r['id']['id']}"
-                if not states.get(_id_str):
-                    raise UnexpectedOutput(f"{_id_str} was returned in the stream search but was not present in state search results")
-                r['streamStatus'] = states[_id_str]
+            self.__update_stream_results_with_status(results)
 
         return results
 
