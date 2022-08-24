@@ -213,7 +213,11 @@ class URLs:
         return f"{self.base}/api/content-management/content/notebook"
 
     @property
-    def playbooks_list(self):
+    def playbook(self):
+        return f"{self.base}/api/demo/flow-{{}}"
+
+    @property
+    def playbook_list(self):
         return f"{self.base}/api/content-management/content/playbook"
 
     @property

@@ -508,6 +508,15 @@ class LogicHubAPI:
         response = self._http_request(url=self.url.dashboard_data.format(dashboard_id), input_var=dashboard_id)
         return response.json()
 
+    def get_playbook(self, resource_id):
+        log.debug("Fetching playbook data")
+        response = self._http_request(
+            url=self.url.playbook.format(resource_id),
+            body={"method": "getGraph", "parameters": {"filterByTag": None}},
+            input_var=resource_id,
+        )
+        return response.json()
+
     # ToDo Token auth not supported as of 2022-05-05 (m94)
     def get_widget_data(self, dashboard_id, widget_id):
         log.debug("Fetching dashboard data")
@@ -922,7 +931,7 @@ class LogicHubAPI:
         body = {"filters": [], "offset": offset or 0, "pageSize": limit, "sortColumn": "name", "sortOrder": "ASC"}
         log.debug("Fetching playbooks")
         response = self._http_request(
-            url=self.url.playbooks_list,
+            url=self.url.playbook_list,
             method="POST",
             params={"pageSize": limit},
             body=body

@@ -375,6 +375,11 @@ class Actions:
             output = {f['name']: {k: v for k, v in f.items() if k != 'name'} for f in output}
         return output
 
+    def get_playbook(self, resource_id):
+        response = self.__api.get_playbook(resource_id=resource_id)
+        _ = self._result_dict_has_schema(response, "result")
+        return response["result"]
+
     def get_playbook_versions(self, playbook_id, **kwargs):
         response = self.__api.get_playbook_versions(playbook_id=playbook_id, **kwargs)
         _ = self._result_dict_has_schema(response, "result", "data")
