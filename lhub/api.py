@@ -153,7 +153,7 @@ class LogicHubAPI:
 
     @property
     def minor_version(self):
-        return int(re.sub(r'^.*?(\d+)$', '$1', self.version))
+        return int(re.findall(r'\d+$', self.version)[0])
 
     def __set_version(self, value):
         if value is None:
