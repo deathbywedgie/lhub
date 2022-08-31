@@ -8,7 +8,9 @@ class LhBaseException(BaseException):
 
     def __init__(self, *args, **kwargs):
         self.input = kwargs.pop("input_var", None)
-        if args:
+        if kwargs.get("message"):
+            self.message = kwargs.pop("message")
+        elif args:
             self.message = args[0]
         elif self.input:
             self.message += f": {self.input}"
