@@ -278,6 +278,11 @@ class LogicHubAPI:
                     raise exceptions.app.UserAlreadyExists(user=input_var)
                 if url == self.url.user_group_create:
                     raise exceptions.app.UserGroupAlreadyExists(input_var=input_var)
+            if 'CannotStartStreamException' in __error_types:
+                for e in __errors:
+                    if e.get("errorType") == 'CannotStartStreamException' and e.get("message"):
+                        raise exceptions.app.CannotStartStreamException(input_var, e["message"])
+                raise exceptions.app.CannotStartStreamException(input_var=input_var)
 
         # Group all tests for status code 500
         elif __status_code == 500:
