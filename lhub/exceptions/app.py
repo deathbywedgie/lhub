@@ -58,6 +58,14 @@ class StreamNotFound(BaseAppError):
         super().__init__(input_var=input_var, *args, **kwargs)
 
 
+class CannotStartStreamException(BaseAppError):
+    """Stream could not be started"""
+    message = 'Stream could not be started'
+
+    def __init__(self, input_var, *args, **kwargs):
+        super().__init__(input_var=input_var, *args, **kwargs)
+
+
 class UnexpectedOutput(BaseAppError):
     """Unexpected Output"""
     message = 'Unexpected output returned'
