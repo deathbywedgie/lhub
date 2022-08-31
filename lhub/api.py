@@ -245,6 +245,7 @@ class LogicHubAPI:
 
         __status_code = response_obj.status_code
         __errors = __response_json.get("errors", [])
+        __error_types = [e.get("errorType") for e in __errors]
         __primary_error_type = __errors[0].get("errorType") if __errors else None
         exception_inputs = {
             "input_var": input_var,
@@ -259,9 +260,9 @@ class LogicHubAPI:
                 raise exceptions.auth.PasswordAuthFailure(**exception_inputs)
             else:
                 if 'Unauthorized for URL' in response_obj.text or 'token is not allowed with this endpoint' in response_obj.text:
-                    raise exceptions.auth.APIAuthNotAuthorized(url)
+                    raise exceptions.auth.APIAuthNotAuthorized(input_var=url)
                 else:
-                    raise exceptions.auth.APIAuthFailure(url)
+                    raise exceptions.auth.APIAuthFailure(input_var=url)
 
         # Group all tests for status code 400
         elif __status_code == 400:
@@ -271,7 +272,7 @@ class LogicHubAPI:
             if 'batch' in url and re.search(r'controllers.BatchController.legacyPost.*?For input string', response_obj.text):
                 _id = re.search(r'POST /demo/batch-(\d+)', response_obj.text)
                 _id = _id.groups()[0] if _id else None
-                raise exceptions.app.BatchNotFound(_id)
+                raise exceptions.app.BatchNotFound(input_var=_id)
             if __primary_error_type == "AlreadyPresentException":
                 if url == self.url.user_create:
                     raise exceptions.app.UserAlreadyExists(user=input_var)
@@ -283,7 +284,7 @@ class LogicHubAPI:
             if 'Unable to find batch with id' in response_obj.text:
                 _id = re.search(r'Unable to find batch with id batch-(\d+)', response_obj.text)
                 _id = _id.groups()[0] if _id else None
-                raise exceptions.app.BatchNotFound(_id)
+                raise exceptions.app.BatchNotFound(input_var=_id)
 
         raise caught_exception
 
@@ -552,7 +553,7 @@ class LogicHubAPI:
         log.debug("Fetching stream")
         response = self._http_request(url=self.url.stream_by_id.format(stream_id), headers=headers, test_response=False, input_var=stream_id)
         if response.status_code == 400 and 'Cannot find entity for id StreamId' in response.text:
-            raise exceptions.app.StreamNotFound(stream_id)
+            raise exceptions.app.StreamNotFound(input_var=stream_id)
         else:
             response.raise_for_status()
         return response.json()
